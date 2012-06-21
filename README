@@ -1,0 +1,22 @@
+pyns -- Python port of the Neuroshare API
+=========================================
+
+Installation
+------------
+
+The pyns package and its installation depends on a few Python
+modules.  These are: numpy, matplotlib, and psutil.  
+
+On a Windows PC, these are easily installed using the Python 
+distribution Python(x, y), which can be found at 
+http://www.pythonxy.com
+
+Further Information
+-------------------
+
+See the included documentation for more details as well as sort
+examples.
+
+The included directory pyns/examples has two short examples 
+showing how to easily explore .nev and .nsx files using the
+pyns package.

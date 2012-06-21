@@ -1,0 +1,120 @@
+#!/usr/bin/env python
+# Created on May 27, 2012
+# @author: Elliott L. Barcikowski
+'''An example script to show some of the power of the pyns package and how it 
+allows for easy plotting of neuro data through the matplotlib package.
+'''
+from optparse import OptionParser
+import sys
+import Tkinter, tkFileDialog # if no file is specified, open a simple dialog
+import numpy
+from matplotlib import pyplot #@UnresolvedImport
+from pyns.nsfile import NSFile
+from pyns.nsentity import EntityType 
+
+def draw_segment_entity(entity):
+    """A utility function to overlay all the segment waveforms for a
+    a specified segment entity. 
+    """
+    if entity.entity_type != EntityType.segment:
+        sys.stderr.write("must specify segment entity\n")
+        return
+    pyplot.clf()
+    # get the segment info for the time resolution, 
+    # though it should always be 30000            
+    segment_info = entity.get_segment_info()
+    title = "Overlay of {0:d} segment waveforms for {1:s}".format(entity.item_count,
+                                                                  entity.label)
+    pyplot.title(title)
+    pyplot.xlabel("[ms]")            
+    for item in range(0, entity.item_count):                
+        # get the segment info for the time resolution, 
+        # though it should always be 30000 
+        segment_info = entity.get_segment_info()
+        (timestamp, waveform, unit_class) = entity.get_segment_data(item)
+        # create physical time dimensions in milliseconds                
+        time = numpy.arange(0, len(waveform), dtype=numpy.double)
+        time *= 1.0/segment_info.sample_rate
+        time *= 1000.0                
+        pyplot.plot(time, waveform)
+    pyplot.draw()
+    pyplot.show()
+    
+def draw_analog_entity(entity):
+    """A utility function to draw any analog entity"""
+    if entity.entity_type != EntityType.analog:
+        sys.stderr.write("must specify segment entity\n")
+        return
+    pyplot.clf()
+    # get the segment info for the time resolution, 
+    # though it should always be 30000            
+    analog_info = entity.get_analog_info()
+    title = "Analog data for {0:s}".format(entity.label)
+    pyplot.title(title)
+    pyplot.xlabel("[s]")
+    pyplot.ylabel("[{0:s}]".format(analog_info.units))            
+    # Get the full waveform.  If it's huge this could
+    # be time consuming 
+    waveform = entity.get_analog_data()
+    # create physical time dimensions in seconds                
+    time = numpy.arange(0, len(waveform), dtype=numpy.double)
+    time *= 1.0/analog_info.sample_rate
+    waveform *= analog_info.resolution
+    pyplot.plot(time, waveform)
+    pyplot.draw()
+    pyplot.show()
+                
+if __name__ == '__main__':
+    parser = OptionParser(usage="usage: %prog [OPTIONS..] [NEV_INPUT_FILE]")
+    parser.add_option("-k", "--skip", dest="skip",
+                      help="skip the first SKIP entities", default=0, type=int)
+    parser.add_option("-a", "--analog-only", dest="analog_only", default=False,
+                      action="store_true", help="Only show waveforms for analog entities")
+    parser.add_option("-s", "--segment-only", dest="segment_only", default=False,
+                      action="store_true", help="Only show waveforms for segment entities")    
+    
+    (options, args) = parser.parse_args()
+    # check options conflicts
+    if options.segment_only and options.analog_only:
+        parser.error("can't specify both analog-only and segment-only options")
+        
+    # check that we have an input file and that it opens successfully  
+    if len(args) == 0:
+        # if no file is specified, we'll open a simple tk file dialog and
+        # and have the user specify a file
+        root = Tkinter.Tk()
+        root.withdraw()
+        nev_formats = [ ("NEV", "*.nev") ]
+        filename = tkFileDialog.askopenfilename(title="Choose a file",
+                                                filetypes=nev_formats)
+    else:
+        filename = args[0]
+    nsfile = NSFile(filename)
+    if nsfile == None:
+        parser.error("failed to open file: {0:s}".format(args[0]))
+    
+    # using ion (interactive mode) also us to delegate control of the window
+    # to the command line.  Easier to use in my opinion.
+    pyplot.ion()
+    
+    # if the entity number is not specified we loop over all the entities and draw
+    # the overlayed segment waveforms for all
+    ientity = options.skip - 1
+    for entity in nsfile.entities[options.skip:]:
+        ientity += 1
+        # if user only wants either segment or analog events, skip others
+        if options.analog_only:
+            if entity.entity_type != EntityType.analog:
+                continue
+        if options.segment_only:
+            if entity.entity_type != EntityType.segment:
+                continue 
+        if entity.item_count > 0:
+            if entity.entity_type == EntityType.segment:
+                draw_segment_entity(entity)
+            elif entity.entity_type == EntityType.analog:
+                draw_analog_entity(entity)
+            else:
+                continue
+            raw_input("Press \"Enter\" for next entity")
+        
