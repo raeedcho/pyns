@@ -12,7 +12,7 @@ from glob import glob
 import Tkinter, tkFileDialog # if no file is specified, open a simple dialog
 
 def dump_namedtuple(ntuple, use_full=False):
-    for key, value in ntuple.__dict__.iteritems():
+    for key, value in ntuple._asdict().iteritems():
         if key == "header_type":
             continue
         if type(value) == str:
