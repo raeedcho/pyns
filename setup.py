@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#from distutils.core import setup
 from setuptools import setup
 
 classifiers =[
@@ -16,7 +15,7 @@ setup(name="Py Neuroshare",
       author="Ripple",
       author_email="ebarcikowski@gmail.com",
       packages=["pyns"],
-      install_requires=["numpy", "psutil", "matplotlib"],
+#      install_requires=["numpy", "psutil", "matplotlib"],
       classifiers=classifiers,
 )
         

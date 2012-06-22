@@ -57,7 +57,7 @@ NEURALEV_SIZE = struct.calcsize(NEURALEV_FORMAT)
 NEV_EXT_HEADER_SIZE = struct.calcsize(NEUEVWAV_FORMAT)
 # structs for headers and data packets for NEURALEV files
 NEURALEV = namedtuple("NEURALEV", 
-                      "file_type file_rev_major file_rev_minor "\
+                      "header_type file_rev_major file_rev_minor "\
                       "file_flags bytes_headers bytes_data_packet timestamp_resolution " \
                       "sample_resolution time_origin "\
                       "application comment n_ext_headers")
@@ -85,11 +85,11 @@ NEVSegment = namedtuple("Segment",
 # says how many electrodes are taking data.  channel_id will be an array 
 # with length channel_count 
 # NSx2.1 files have no extended header information 
-NEURALSG = namedtuple("NEURALSG", "file_type label period channel_count channel_id")
+NEURALSG = namedtuple("NEURALSG", "header_type label period channel_count channel_id")
 
 # namedtuples for NEURALCD files (NSx2.2 files)
 # NEURALCD is the basic header for NSx2.2 files
-NEURALCD = namedtuple("NEURALCD", "file_type maj_revision min_revision bytes_headers label "\
+NEURALCD = namedtuple("NEURALCD", "header_type maj_revision min_revision bytes_headers label "\
                       "comment period timestamp_resolution time_origin "\
                       "channel_count")
 NEURALCD_FORMAT = "<8s2BI16s256s2I8HI"
