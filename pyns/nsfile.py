@@ -365,7 +365,7 @@ class NSFile:
             if f.time_span > time_span: 
                 time_span = f.time_span
             header = f.parser.get_basic_header()
-            if header.file_type == "NEURALEV":
+            if header.header_type == "NEURALEV":
                 year = header.time_origin.year
                 month = header.time_origin.month
                 day = header.time_origin.day
