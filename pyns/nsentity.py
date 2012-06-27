@@ -673,8 +673,8 @@ class AnalogEntity(Entity):
         """
         # all the heavy lifting for this function is done in the Nsx21PacketParser
         # or the Nsx22PacketParser.  Depending on what is held by this entity
-        waveform = self.parser.get_analog_data(self.channel_index, start_index, 
-                                               index_count)        
+        waveform = self.parser.get_analog_data(self.channel_index, start_index, index_count)
+                                               
         if use_scale:
             waveform *= self.scale
 

@@ -153,8 +153,13 @@ class NSFile:
         # sample_freqs is a list of all the sample frequencies in order
         sample_freqs = sorted(set([ e.sample_freq for e in self.get_entities(EntityType.analog) ]))
         # find the last segment entity, insert the analog entities directly after this index
-        insert_index = [index for index, e in enumerate(self.entities) if e.entity_type == EntityType.segment\
-                         or e.entity_type == EntityType.event][-1] + 1        
+        segment_index = [index for index, e in enumerate(self.entities) if e.entity_type == EntityType.segment \
+                         or e.entity_type == EntityType.event]    
+        if len(segment_index) > 0:
+            insert_index = segment_index[-1] + 1
+        else:
+            insert_index = 0
+            
         analog_entities = [ e for e in self.get_entities(EntityType.analog) ]
         # filter out the non-analog entities
         self.entities = [e for e in self.entities if e.entity_type != EntityType.analog]

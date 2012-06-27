@@ -214,7 +214,8 @@ class NevParser:
     def get_extended_header(self, header_index=None):
         """Return extended header for nev file from current position in
         file.  This should be modified to be position independent 
-        with possibly a generator"""
+        with possibly a generator
+        """
         # if header_index is specified, just to that absolute position in the
         # file.  If not we try to read the header from the current position.
         # This allows the user to skip to the header they want, but when just
@@ -231,22 +232,22 @@ class NevParser:
         except:
             raise NeuroshareError(NSReturnTypes.NS_BADFILE,
                                   "failed on file read")
-        file_type = buf[0:8]
-        if file_type == "NEUEVWAV":
+        header_type = buf[0:8]
+        if header_type == "NEUEVWAV":
             data = struct.unpack(NEUEVWAV_FORMAT, buf)
             return NEUEVWAV._make(data[:-1])
-        elif file_type == "NEUEVLBL":
+        elif header_type == "NEUEVLBL":
             data = struct.unpack(NEUEVLBL_FORMAT, buf)            
             return NEUEVLBL._make(data[:-1])
-        elif file_type == "DIGLABEL":
+        elif header_type == "DIGLABEL":
             data = struct.unpack(DIGLABEL_FORMAT, buf)            
             return DIGLABEL._make(data[:-1])
-        elif file_type == "NEUEVFLT":
+        elif header_type == "NEUEVFLT":
             data = struct.unpack(NEUEVFLT_FORMAT, buf)            
             return NEUEVFLT._make(data[:-1])
         else:
             raise NeuroshareError(NSReturnTypes.NS_BADFILE,
-                                  "unknown extended header.")
+                                  "unknown extended header: {0:s}".format(header_type))
         
     def get_data_packets(self):
         """Generator to loop over all data packets.  Makes use the 
@@ -461,7 +462,8 @@ class Nsx22Parser:
         self.bytes_headers = header.bytes_headers
         # calculate the number of data points using the file size and subtracting the
         # number of bytes in the headers.  This assumes that each piece of data is int16
-        self.n_data_points = (self.size - self.bytes_headers) / self.channel_count / 2
+        # FIXME: This does not support pausing
+        self.n_data_points = (self.size - self.bytes_headers - 9) / self.channel_count / 2
         
         # now that we know channel count we can calcuate the format and size of one data packet
         self.data_packet_form = "<B2I{0:d}h".format(self.channel_count)
@@ -529,29 +531,34 @@ class Nsx22Parser:
         return CC._make(struct.unpack(CC_FORMAT, buf))
     
     def get_analog_data(self, channel_index, start_index, index_count):
-        """Return the analog waveform for Nsx2.1 files.  Returns data starting at the 
+        """Return the analog waveform for Nsx2.2 files.  Returns data starting at the 
         start_index bin and the next index_count bins.   If the end of the file is reached 
         before index_count return a waveform with as many bins as are found.  
         Parameters:
             channel - index of the wanted electrode data
             start_index - first bin of electrode data to return
             index - how many bins of the waveform to return
-        """                  
+        """                 
+#        print channel_index, start_index, index_count 
         if index_count == None:
-            index_count = self.channel_count - start_index 
+            index_count = self.n_data_points - start_index 
+#        print index_count
         waveform = numpy.zeros(index_count, dtype=numpy.double)
-        # total bytes of one data packet
+        # total bytes of one data packet minus 2 which 
+        # points us to the data we want to read
         skip_size = 2*self.channel_count - 2
-        # offset of the first wanted data point
+        # skip_size = 9 + 2*self.channel_count - 2
+        # offset to the first wanted data point
         offset = 9 + 2*self.channel_count*start_index + 2*channel_index
         # skip the start of the data packets
-        self.fid.seek(NEURALCD_SIZE + self.channel_count * CC_SIZE + offset,
+        self.fid.seek(NEURALCD_SIZE + self.channel_count*CC_SIZE + offset,
                       os.SEEK_SET)
         bin_count = 0
         for iBin in xrange(0, index_count):
             # get the wanted data point
             buf = self.fid.read(2)
             if len(buf) < 2:
+                sys.stderr.write("Warning: file ended prematurely\n")
                 break
             waveform[iBin] = struct.unpack("h", buf)[0]
             bin_count += 1
@@ -559,7 +566,9 @@ class Nsx22Parser:
             self.fid.seek(skip_size, os.SEEK_CUR)
         # remove the zeroed empty part of the waveform if we ran 
         # out of events in the data
+#        print bin_count
         waveform = numpy.resize(waveform, bin_count)
+        
         return waveform
 
     def get_data_packet(self, packet_index=None):
