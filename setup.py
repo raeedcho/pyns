@@ -14,7 +14,7 @@ setup(name="Py Neuroshare",
       description="Python port of the Neuroshare API",
       author="Ripple",
       author_email="ebarcikowski@gmail.com",
-      packages=["pyns"],
+      packages=["pyns", "nsbrowser"],
 #      install_requires=["numpy", "psutil", "matplotlib"],
       classifiers=classifiers,
 )

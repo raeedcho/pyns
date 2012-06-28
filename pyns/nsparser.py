@@ -463,17 +463,36 @@ class Nsx22Parser:
         # calculate the number of data points using the file size and subtracting the
         # number of bytes in the headers.  This assumes that each piece of data is int16
         # FIXME: This does not support pausing
-        self.n_data_points = (self.size - self.bytes_headers - 9) / self.channel_count / 2
-        
+        self.data_packet_list = []
+        self.fid.seek(self.bytes_headers, os.SEEK_SET)
+        while True:
+            buf = self.fid.read(9)
+            if len(buf) != 9:
+                break
+            (head, ts, n_data_points) = struct.unpack('<B2I', buf)
+            if not head == 1:
+                raise NeuroshareError(NSReturnTypes.NS_BADFILE,
+                                      "Invalid data packet header: {0}".format(head))
+            self.data_packet_list.append((ts, n_data_points))
+            self.fid.seek(self.channel_count*n_data_points*2, os.SEEK_CUR)
+            
         # now that we know channel count we can calcuate the format and size of one data packet
         self.data_packet_form = "<B2I{0:d}h".format(self.channel_count)
         self.data_packet_size = struct.calcsize(self.data_packet_form)
+        
         # record the conversion between ADC and physical values.  This is will be needed
         # when we read the analog waveforms 
 #        self.scale = float(header.max_analog_value - header.min_analog_value)
 #        self.scale = self.scale / (header.max_dig_value - header.min_dig_value)
         self.timestamp_resolution = header.timestamp_resolution
         self.period = header.period
+        
+    @property
+    def n_data_points(self):
+        n_data_points = 0
+        for points in self.data_packet_list:
+            n_data_points += points[1]
+        return n_data_points
         
     def __del__(self):
         """close the file when we're done with this instance"""
@@ -538,39 +557,54 @@ class Nsx22Parser:
             channel - index of the wanted electrode data
             start_index - first bin of electrode data to return
             index - how many bins of the waveform to return
+        Returns:
+            requested waveform as a numpy.array
         """                 
 #        print channel_index, start_index, index_count 
         if index_count == None:
             index_count = self.n_data_points - start_index 
 #        print index_count
-        waveform = numpy.zeros(index_count, dtype=numpy.double)
+        waveform = numpy.zeros(index_count)
         # total bytes of one data packet minus 2 which 
         # points us to the data we want to read
-        skip_size = 2*self.channel_count - 2
-        # skip_size = 9 + 2*self.channel_count - 2
-        # offset to the first wanted data point
-        offset = 9 + 2*self.channel_count*start_index + 2*channel_index
-        # skip the start of the data packets
-        self.fid.seek(NEURALCD_SIZE + self.channel_count*CC_SIZE + offset,
-                      os.SEEK_SET)
-        bin_count = 0
-        for iBin in xrange(0, index_count):
-            # get the wanted data point
-            buf = self.fid.read(2)
-            if len(buf) < 2:
-                sys.stderr.write("Warning: file ended prematurely\n")
+        self.fid.seek(self.bytes_headers, os.SEEK_SET)
+        points_read = 0
+        stop_read = False
+        for ipacket, data_packet in enumerate(self.data_packet_list):
+            n_data_points = data_packet[1]
+            packet_size = struct.calcsize(self.get_data_packet_format(ipacket))
+            packet_end_pos = self.fid.tell() + packet_size
+            #packet = self.get_data_packet(ipacket)
+            
+            # seek to the first wanted channel in this data packet
+            self.fid.seek(9 + 2*channel_index, os.SEEK_CUR)
+            for _ in range(0, n_data_points): 
+                try:
+                    waveform[points_read] = struct.unpack('h', self.fid.read(2))[0]
+                except:
+                    waveform[points_read] = 0x8000
+                self.fid.seek(2*self.channel_count - 2, os.SEEK_CUR)
+                points_read += 1
+                if points_read >= index_count:
+                    stop_read = True
+                    break
+            self.fid.seek(packet_end_pos)
+            if stop_read:
                 break
-            waveform[iBin] = struct.unpack("h", buf)[0]
-            bin_count += 1
-            # advance to the start of the next wanted data point            
-            self.fid.seek(skip_size, os.SEEK_CUR)
-        # remove the zeroed empty part of the waveform if we ran 
+        # remove the zero-ed empty part of the waveform if we ran 
         # out of events in the data
 #        print bin_count
-        waveform = numpy.resize(waveform, bin_count)
-        
+        #waveform = numpy.resize(waveform, index_count)
         return waveform
 
+    def get_data_packet_format(self, index):
+        """calculate the number format for the index'th data packet using
+        the number of data points and the channel count
+        """
+        n_data_packets = self.data_packet_list[index][1]
+        form = "<B2I{0:d}h".format(self.channel_count*n_data_packets)
+        return form
+    
     def get_data_packet(self, packet_index=None):
         """Return one full data packet.  This will contain an array of all the
         digitized data for one moment in time.  If packet_index is not specified
@@ -581,11 +615,18 @@ class Nsx22Parser:
             if packet_index < 0 or packet_index >= self.n_data_points:
                 raise NeuroshareError(NSReturnTypes.NS_BADINDEX, 
                                       "invalid packet_index: {0:d}".format(packet_index))
-            self.fid.seek(self.bytes_headers + packet_index*self.data_packet_size, os.SEEK_SET)
-        buf = self.fid.read(self.data_packet_size)
-        tup = struct.unpack(self.data_packet_form, buf)
-        data_points = numpy.array(tup[3:], dtype=numpy.int16)
-        return Nsx22DataPacket._make(tup[0:3] + (data_points,))
+        
+            self.fid.seek(self.bytes_headers, os.SEEK_SET)
+            for ipacket in range(0, packet_index - 1):
+                size = struct.calcsize(self.get_data_packet_format(ipacket))
+                self.fid.seek(size, os.SEEK_CUR)
+        
+        form = self.get_data_packet_format(packet_index) 
+        size = struct.calcsize(form)
+        tup = struct.unpack(form, self.fid.read(size))
+        #data_points = numpy.array(tup[3:], dtype=numpy.int16)
+        
+        return tup
     
 # Debugging section
 if __name__ == "__main__":
