@@ -70,11 +70,11 @@ class FileData:
         return self.parser.fid.name.split(".")[-1]
     
 class NSFile:
-    '''General entry point to the pyns implementation of the Neuroshare API.  
+    """General entry point to the pyns implementation of the Neuroshare API.  
     This class loads all the NEV files associated with the file specified.  
     The files are read and all the found entities are stored.  This class 
     provides the port of the ns_GetFileInfo function from the Neuroshare API
-    '''
+    """
     def __init__(self, filename, proc_single=False):
         """Initialize new File instance.
         
@@ -188,7 +188,7 @@ class NSFile:
         entity_labels = {}
         for header in parser.get_extended_headers():
             if header == None:
-                sys.stderr.write("Warning: invalid nev header found\n")
+                sys.stderr.write("Warning: invalid nev header found\n")            
                 continue
             # only create entities in the case of NEUEVWAV packets which
             # correspond to spike waveforms for now

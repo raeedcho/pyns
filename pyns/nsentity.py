@@ -136,9 +136,7 @@ class Entity:
     def get_entity_info(self):
         """return the entity info for this entity"""
         return EntityInfo(self.label, self.entity_type, self.item_count)
-    
-
-     
+         
     def add_packet_data(self, timestamp, packet_index):
         """Add packet data to list.  The length of this list should be the
         same as item_count
@@ -205,7 +203,6 @@ class SegmentEntity(Entity):
         Entity.__init__(self, parser, electrode_id)
         self.item_count = 0
         self.entity_type = EntityType.segment
-        # Default label that will be used if no corresponding NEUEVLBL header is found
         
     @property
     def label(self):
