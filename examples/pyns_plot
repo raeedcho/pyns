@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """pyns_plot is a simple command line plotting tool (making use of matplotlib)
 to index through plots of Neuroshare entities.  This tool is provided mostly
-to give a usage example of pyns, the Python Neuroshare API. 
+to give a usage example of pyns, the Python Neuroshare API.  The user may
+browse through Neuroshare entities by using the keys: n - next entity,
+p - previous entity, and q - to quit the program.
 """    
 # Created on May 27, 2012
 # @author: Elliott L. Barcikowski
@@ -12,6 +14,7 @@ import tkMessageBox
 import tkFileDialog # if no file is specified, open a simple dialog
 import numpy
 from matplotlib import pyplot #@UnresolvedImport
+from matplotlib import rc
 from pyns.nsfile import NSFile
 from pyns.nsentity import EntityType 
 import time
@@ -35,31 +38,48 @@ class PlotManager:
         self.max_segment = max_segment
         self.max_analog = max_analog
         
-        self.draw_entity()
+        # draw the first entity.  If it has zero items, or is not
+        # a segment or analog, go on to the next
+        if not self.draw_entity():
+            self.next()
         
     def onpress(self, event):
         if event.key not in ('n', 'p', 'q'): return
         if event.key == 'n':
-            if self.current_entity < len(self.entities) - 1:
-                self.current_entity += 1
-            else:
-                sys.exit(0)
+            self.next()
         if event.key == 'p':
-            if self.current_entity != 0:
-                self.current_entity -= 1
+            self.previous()
         if event.key == 'q':
             if tkMessageBox.askokcancel('pyns_plot', 'Quit pyns_plot?'):
                 sys.exit(0)
-            
-        self.draw_entity()
-            
+
+    def previous(self):
+        if self.current_entity != 0:
+            self.current_entity -= 1
+            # if we fail to draw an entity (basically if the 
+            # entity has zero items keep iterating back
+            if not self.draw_entity():
+                self.previous()
+
+    def next(self):
+        if self.current_entity < len(self.entities) - 1:
+            self.current_entity += 1
+            # if we fail to draw an entity (basically if the 
+            # entity has zero items keep iterating forward)
+            if not self.draw_entity():
+                self.next()
+        else:
+            sys.exit(0)
+
     def draw_entity(self):
         entity = self.entities[self.current_entity]
         if entity.entity_type == EntityType.segment:
-            self.draw_segment_entity()
+            return self.draw_segment_entity()
         elif entity.entity_type == EntityType.analog:
-            self.draw_analog_entity()
-            
+            return self.draw_analog_entity()
+        # return false if we don't have an analog or segment entity
+        return False
+
     def draw_segment_entity(self):
         """A utility function to overlay all the segment waveforms for a
         a specified segment entity. 
@@ -67,17 +87,21 @@ class PlotManager:
         entity = self.entities[self.current_entity]
         if entity.entity_type != EntityType.segment:
             sys.stderr.write("must specify segment entity\n")
-            return
-    
+            return False
+        item_count = min(entity.item_count, self.max_segment)
+        title = "Overlay of {0:d} segment waveforms for {1:s}".format(item_count, entity.label)
+        if item_count == 0:
+            return False
+
         self.ax.cla()
     
         # get the time resolution though it should always be 1/30kHz
         segment_info = entity.get_segment_info()
-        item_count = min(entity.item_count, self.max_segment)
-        title = "Overlay of {0:d} segment waveforms for {1:s}".format(item_count, entity.label)
+
         self.ax.set_title(title)
         
-        self.ax.set_xlabel("[ms]")
+        self.ax.set_xlabel('[ms]')
+        self.ax.set_ylabel('[uV]')
         for item in range(0, item_count):
             # get the segment info for the time resolution, 
             # though it should always be 30000 
@@ -88,33 +112,38 @@ class PlotManager:
             time *= 1.0/segment_info.sample_rate
             time *= 1000.0
             self.ax.plot(time, waveform)
-        # pyplot.plot(time, waveform)
+
         self.fig.canvas.draw()
-    # pyplot.draw()
-    # pyplot.show()
+        return True
+
     
     def draw_analog_entity(self):
         """A utility function to draw any analog entity"""
         
         entity = self.entities[self.current_entity]
         if entity.entity_type != EntityType.analog:
-            sys.stderr.write("must specify segment entity\n")
-            return
+            sys.stderr.write("must specify analog entity\n")
+            return False
     
         self.ax.cla()        
-        self.ax.cla()
-        # get the segment info for the time resolution, 
-        # though it should always be 30000            
+        item_count = min(self.max_analog, entity.item_count)
+        if item_count == 0:
+            return False
+
+        # The analog info will be useful to get time axis
+        # resolution (i.e., ns2 or ns5 files)
         analog_info = entity.get_analog_info()
-        title = "Analog data for {0:s}".format(entity.label)
-    
-        pyplot.title(title)
-        pyplot.xlabel("[s]")
-        pyplot.ylabel("[{0:s}]".format(analog_info.units))            
-        # Get the full waveform.  If it's huge this could
-        # be time consuming 
-    
-        waveform = entity.get_analog_data(0, self.max_analog)
+        entity_info = entity.get_entity_info()
+        title = "Analog data for {0}".format(entity_info.label)
+        
+        if item_count < entity.item_count:
+            title += "(max {0:d} bins)".format(item_count)
+
+        self.ax.set_title(title)
+        self.ax.set_xlabel('[s]')
+        self.ax.set_ylabel('[uV]')
+            
+        waveform = entity.get_analog_data(0, item_count)
         # create physical time dimensions in seconds                
         time = numpy.arange(0, len(waveform), dtype=numpy.double)
         time *= 1.0/analog_info.sample_rate
@@ -122,12 +151,16 @@ class PlotManager:
         self.ax.plot(time, waveform)
         
         self.fig.canvas.draw()
-                
+
+        return True
+
 if __name__ == '__main__':
-    description = """pyns_plot is a simple command line plotting tool (making use of matplotlib)
-    to index through plots of Neuroshare entities.  This tool is provided mostly
-    to give a usage example of pyns, the Python Neuroshare API. 
-    """    
+    description = """pyns_plot is a simple command line plotting tool 
+(making use of matplotlib) to index through plots of Neuroshare entities.  
+This tool is provided mostly to give a usage example of pyns, the Python 
+Neuroshare API.  The user may browse through Neuroshare entities by using 
+the keys: n - next entity, p - previous entity, and q - to quit the program.
+"""    
     parser = argparse.ArgumentParser(description=description)
                                      
     parser.add_argument("-k", "--skip", dest="skip",
