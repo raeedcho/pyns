@@ -278,7 +278,7 @@ class NSBrowserMainWindow(QtGui.QMainWindow, Ui_NSBrowserMainWindow):
         index_count = 2*entity.sample_freq
             
         waveform = entity.get_analog_data(0, index_count)
-        print waveform
+        
         t = numpy.arange(0, len(waveform), dtype=numpy.double)
         t /= entity.sample_freq
         self.mpl.canvas.ax.plot(t, waveform)
@@ -352,7 +352,7 @@ if __name__=="__main__":
 
     app = QtGui.QApplication(sys.argv)
     nsbrowser = NSBrowserMainWindow()
-    # Finally cent this thing....
+    # Finally center this thing....
     r = nsbrowser.geometry()
     r.moveCenter(QtGui.QApplication.desktop().availableGeometry().center())
     nsbrowser.setGeometry(r)

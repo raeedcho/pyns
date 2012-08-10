@@ -1,120 +1,176 @@
 #!/usr/bin/env python
+"""pyns_plot is a simple command line plotting tool (making use of matplotlib)
+to index through plots of Neuroshare entities.  This tool is provided mostly
+to give a usage example of pyns, the Python Neuroshare API. 
+"""    
 # Created on May 27, 2012
 # @author: Elliott L. Barcikowski
-'''An example script to show some of the power of the pyns package and how it 
-allows for easy plotting of neuro data through the matplotlib package.
-'''
-from optparse import OptionParser
+import argparse
 import sys
-import Tkinter, tkFileDialog # if no file is specified, open a simple dialog
+import Tkinter
+import tkMessageBox
+import tkFileDialog # if no file is specified, open a simple dialog
 import numpy
 from matplotlib import pyplot #@UnresolvedImport
 from pyns.nsfile import NSFile
 from pyns.nsentity import EntityType 
+import time
+import textwrap
 
-def draw_segment_entity(entity):
-    """A utility function to overlay all the segment waveforms for a
-    a specified segment entity. 
+class PlotManager:
+    """class to draw entities and handle events from user.  The pyplot
+    canvas help by this class is controlled with mouse clicks (to 
+    advance to the next entity) or by the key-strokes (q, p, and n)
+    q causes the application to quit, n advances to the next entity,
+    and p goes back to the previous entity.
     """
-    if entity.entity_type != EntityType.segment:
-        sys.stderr.write("must specify segment entity\n")
-        return
-    pyplot.clf()
-    # get the segment info for the time resolution, 
-    # though it should always be 30000            
-    segment_info = entity.get_segment_info()
-    title = "Overlay of {0:d} segment waveforms for {1:s}".format(entity.item_count,
-                                                                  entity.label)
-    pyplot.title(title)
-    pyplot.xlabel("[ms]")            
-    for item in range(0, entity.item_count):                
-        # get the segment info for the time resolution, 
-        # though it should always be 30000 
-        segment_info = entity.get_segment_info()
-        (timestamp, waveform, unit_class) = entity.get_segment_data(item)
-        # create physical time dimensions in milliseconds                
-        time = numpy.arange(0, len(waveform), dtype=numpy.double)
-        time *= 1.0/segment_info.sample_rate
-        time *= 1000.0                
-        pyplot.plot(time, waveform)
-    pyplot.draw()
-    pyplot.show()
+    def __init__(self, entities, skip=0, 
+                 max_segment=100, max_analog=30000):
+        self.entities = entities
+        self.current_entity = skip
+        self.fig = pyplot.figure()
+        self.ax = self.fig.add_subplot(111)
+        self.fig.canvas.mpl_connect('key_press_event', self.onpress)
+        
+        self.max_segment = max_segment
+        self.max_analog = max_analog
+        
+        self.draw_entity()
+        
+    def onpress(self, event):
+        if event.key not in ('n', 'p', 'q'): return
+        if event.key == 'n':
+            if self.current_entity < len(self.entities) - 1:
+                self.current_entity += 1
+            else:
+                sys.exit(0)
+        if event.key == 'p':
+            if self.current_entity != 0:
+                self.current_entity -= 1
+        if event.key == 'q':
+            if tkMessageBox.askokcancel('pyns_plot', 'Quit pyns_plot?'):
+                sys.exit(0)
+            
+        self.draw_entity()
+            
+    def draw_entity(self):
+        entity = self.entities[self.current_entity]
+        if entity.entity_type == EntityType.segment:
+            self.draw_segment_entity()
+        elif entity.entity_type == EntityType.analog:
+            self.draw_analog_entity()
+            
+    def draw_segment_entity(self):
+        """A utility function to overlay all the segment waveforms for a
+        a specified segment entity. 
+        """
+        entity = self.entities[self.current_entity]
+        if entity.entity_type != EntityType.segment:
+            sys.stderr.write("must specify segment entity\n")
+            return
     
-def draw_analog_entity(entity):
-    """A utility function to draw any analog entity"""
-    if entity.entity_type != EntityType.analog:
-        sys.stderr.write("must specify segment entity\n")
-        return
-    pyplot.clf()
-    # get the segment info for the time resolution, 
-    # though it should always be 30000            
-    analog_info = entity.get_analog_info()
-    title = "Analog data for {0:s}".format(entity.label)
-    pyplot.title(title)
-    pyplot.xlabel("[s]")
-    pyplot.ylabel("[{0:s}]".format(analog_info.units))            
-    # Get the full waveform.  If it's huge this could
-    # be time consuming 
-    waveform = entity.get_analog_data()
-    # create physical time dimensions in seconds                
-    time = numpy.arange(0, len(waveform), dtype=numpy.double)
-    time *= 1.0/analog_info.sample_rate
-    waveform *= analog_info.resolution
-    pyplot.plot(time, waveform)
-    pyplot.draw()
-    pyplot.show()
+        self.ax.cla()
+    
+        # get the time resolution though it should always be 1/30kHz
+        segment_info = entity.get_segment_info()
+        item_count = min(entity.item_count, self.max_segment)
+        title = "Overlay of {0:d} segment waveforms for {1:s}".format(item_count, entity.label)
+        self.ax.set_title(title)
+        
+        self.ax.set_xlabel("[ms]")
+        for item in range(0, item_count):
+            # get the segment info for the time resolution, 
+            # though it should always be 30000 
+            segment_info = entity.get_segment_info()
+            (timestamp, waveform, a) = entity.get_segment_data(item)
+            # create physical time dimensions in milliseconds                
+            time = numpy.arange(0, len(waveform), dtype=numpy.double)
+            time *= 1.0/segment_info.sample_rate
+            time *= 1000.0
+            self.ax.plot(time, waveform)
+        # pyplot.plot(time, waveform)
+        self.fig.canvas.draw()
+    # pyplot.draw()
+    # pyplot.show()
+    
+    def draw_analog_entity(self):
+        """A utility function to draw any analog entity"""
+        
+        entity = self.entities[self.current_entity]
+        if entity.entity_type != EntityType.analog:
+            sys.stderr.write("must specify segment entity\n")
+            return
+    
+        self.ax.cla()        
+        self.ax.cla()
+        # get the segment info for the time resolution, 
+        # though it should always be 30000            
+        analog_info = entity.get_analog_info()
+        title = "Analog data for {0:s}".format(entity.label)
+    
+        pyplot.title(title)
+        pyplot.xlabel("[s]")
+        pyplot.ylabel("[{0:s}]".format(analog_info.units))            
+        # Get the full waveform.  If it's huge this could
+        # be time consuming 
+    
+        waveform = entity.get_analog_data(0, self.max_analog)
+        # create physical time dimensions in seconds                
+        time = numpy.arange(0, len(waveform), dtype=numpy.double)
+        time *= 1.0/analog_info.sample_rate
+        waveform *= analog_info.resolution
+        self.ax.plot(time, waveform)
+        
+        self.fig.canvas.draw()
                 
 if __name__ == '__main__':
-    parser = OptionParser(usage="usage: %prog [OPTIONS..] [NEV_INPUT_FILE]")
-    parser.add_option("-k", "--skip", dest="skip",
-                      help="skip the first SKIP entities", default=0, type=int)
-    parser.add_option("-a", "--analog-only", dest="analog_only", default=False,
-                      action="store_true", help="Only show waveforms for analog entities")
-    parser.add_option("-s", "--segment-only", dest="segment_only", default=False,
-                      action="store_true", help="Only show waveforms for segment entities")    
-    
-    (options, args) = parser.parse_args()
+    description = """pyns_plot is a simple command line plotting tool (making use of matplotlib)
+    to index through plots of Neuroshare entities.  This tool is provided mostly
+    to give a usage example of pyns, the Python Neuroshare API. 
+    """    
+    parser = argparse.ArgumentParser(description=description)
+                                     
+    parser.add_argument("-k", "--skip", dest="skip",
+                        help="skip the first SKIP entities", default=0, type=int)
+    parser.add_argument("-a", "--analog-only", dest="analog_only", default=False,
+                        action="store_true", help="Only show waveforms for analog entities")
+    parser.add_argument("-s", "--segment-only", dest="segment_only", default=False,
+                        action="store_true", help="Only show waveforms for segment entities")
+    parser.add_argument("-m", "--max-segments", dest="max_segments", default=100,
+                        type=int, help="Only overlay MAX_SEGMENTS spikes")
+    parser.add_argument("-n", "--max-analog", dest="max_analog", default=30000,
+                        type=int, help="Only overlay MAX_ANALOG time bins")
+    parser.add_argument('filename', nargs="?", type=str, metavar="NEV_FILE",
+                        help="use NEV_FILE as input (optional)", default=None)
+    args = parser.parse_args()
     # check options conflicts
-    if options.segment_only and options.analog_only:
+    if args.segment_only and args.analog_only:
         parser.error("can't specify both analog-only and segment-only options")
         
     # check that we have an input file and that it opens successfully  
-    if len(args) == 0:
+    if not args.filename:
         # if no file is specified, we'll open a simple tk file dialog and
         # and have the user specify a file
         root = Tkinter.Tk()
         root.withdraw()
-        nev_formats = [ ("NEV", "*.nev") ]
+        nev_formats = [ ("NEV", "*.nev"), ("NSx", "*.ns?") ]
         filename = tkFileDialog.askopenfilename(title="Choose a file",
                                                 filetypes=nev_formats)
+        if len(filename) == 0:
+            parser.error('selected invalid NEV or NSx file.')
     else:
-        filename = args[0]
+        filename = args.filename
     nsfile = NSFile(filename)
     if nsfile == None:
         parser.error("failed to open file: {0:s}".format(args[0]))
-    
-    # using ion (interactive mode) also us to delegate control of the window
-    # to the command line.  Easier to use in my opinion.
-    pyplot.ion()
-    
-    # if the entity number is not specified we loop over all the entities and draw
-    # the overlayed segment waveforms for all
-    ientity = options.skip - 1
-    for entity in nsfile.entities[options.skip:]:
-        ientity += 1
-        # if user only wants either segment or analog events, skip others
-        if options.analog_only:
-            if entity.entity_type != EntityType.analog:
-                continue
-        if options.segment_only:
-            if entity.entity_type != EntityType.segment:
-                continue 
-        if entity.item_count > 0:
-            if entity.entity_type == EntityType.segment:
-                draw_segment_entity(entity)
-            elif entity.entity_type == EntityType.analog:
-                draw_analog_entity(entity)
-            else:
-                continue
-            raw_input("Press \"Enter\" for next entity")
-        
+
+    if args.analog_only:
+        wanted_entities = [e for e in nsfile.get_entities(EntityType.analog)]
+    elif args.segment_only:
+        wanted_entities = [e for e in nsfile.get_entities(EntityType.segment)]
+    else:
+        wanted_entities = [e for e in nsfile.get_entities()]
+
+    manager = PlotManager(wanted_entities, args.skip, 
+                          args.max_segments, args.max_analog) 
+    pyplot.show()

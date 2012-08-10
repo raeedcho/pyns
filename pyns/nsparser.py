@@ -460,9 +460,9 @@ class Nsx22Parser:
         # of extended headers (CC headers) found in this file
         self.channel_count = header.channel_count
         self.bytes_headers = header.bytes_headers
-        # calculate the number of data points using the file size and subtracting the
-        # number of bytes in the headers.  This assumes that each piece of data is int16
-        # FIXME: This does not support pausing
+        
+        # store the number of data packets (i.e. pauses).  This list will
+        # hold a tuple of (timestamps, datapoints until end of file or next pause)
         self.data_packet_list = []
         self.fid.seek(self.bytes_headers, os.SEEK_SET)
         while True:
@@ -549,52 +549,76 @@ class Nsx22Parser:
         buf = self.fid.read(CC_SIZE)
         return CC._make(struct.unpack(CC_FORMAT, buf))
     
+    def get_analog_packet(self, channel_index, start_index, index_count): 
+        """Generator to to read a file in large chunks but return 
+        only the wanted channel and data from a time slice. 
+        Parameters:
+            channel_index - if specified, only return data for the wanted.  If 
+                unspecified, returns all the data for a single time-slice
+            packet_index - return the wanted packet.  If unspecified, returns
+                as a yield.  Otherwise, 
+        """
+        # We chunks of 1024 to ensure that we don't slow down running by excessive 
+        # read calls, but still we don't crash the machine trying to read 10G at once
+        max_read_points = 1024
+        # max_read_bytes = 2*1024*self.channel_count
+        # To support pausing in nsx2.2, we must keep track of the the number of 
+        # data points found before the next pause, this is stored in 
+        # self.data_packet_list.
+        self.fid.seek(self.bytes_headers, os.SEEK_SET)
+        points_read = 0
+        while points_read < index_count:
+            for ipacket, data_packet in enumerate(self.data_packet_list):
+                # store the number of data points until the next pause
+                # TODO: do we need to store all the pauses? check how this is used
+                # track the time bins remaining until the next pause  
+                remaining_points = data_packet[1]
+                # skip first 3 fields of data packet (B2I)
+                self.fid.seek(9, os.SEEK_CUR)
+                while remaining_points > 0 and points_read < index_count:
+                    read_points = min(max_read_points, remaining_points)
+                    # TODO: throw exception on failed read
+                    read_bytes = read_points*2*self.channel_count
+                    read_buffer = self.fid.read(read_bytes)
+                    if len(read_buffer) != read_bytes:
+                        msg = 'should have read {0}, but read {1}'.format(read_bytes, len(read_buffer))
+                        sys.stderr.write('warning: {0}\n'.format(msg))
+                        # raise NeuroshareError(msg)
+                        read_points = len(read_buffer)/2/self.channel_count
+                    for point in range(0, read_points):
+                        byte = 2*(channel_index + point*self.channel_count)
+                        buf = read_buffer[byte:byte+2]
+                        data = struct.unpack('<h', buf)[0]
+                        points_read += 1
+                        yield data 
+                        if points_read == index_count:
+                            return
+                    # update the remaining points 
+                    remaining_points -= read_points
+            return
+
     def get_analog_data(self, channel_index, start_index, index_count):
-        """Return the analog waveform for Nsx2.2 files.  Returns data starting at the 
-        start_index bin and the next index_count bins.   If the end of the file is reached 
-        before index_count return a waveform with as many bins as are found.  
+        """Return the analog waveform for Nsx2.2 files.  Returns data 
+        starting at the start_index bin and the next index_count bins. If the end 
+        of the file is reached before index_count return a waveform with 
+        as many bins as are found.   
         Parameters:
             channel - index of the wanted electrode data
             start_index - first bin of electrode data to return
             index - how many bins of the waveform to return
         Returns:
-            requested waveform as a numpy.array
-        """                 
-#        print channel_index, start_index, index_count 
+            Requested waveform as a numpy.array
+        """
         if index_count == None:
-            index_count = self.n_data_points - start_index 
-#        print index_count
+            index_count = self.n_data_points - start_index
+             
         waveform = numpy.zeros(index_count)
         # total bytes of one data packet minus 2 which 
         # points us to the data we want to read
-        self.fid.seek(self.bytes_headers, os.SEEK_SET)
-        points_read = 0
-        stop_read = False
-        for ipacket, data_packet in enumerate(self.data_packet_list):
-            n_data_points = data_packet[1]
-            packet_size = struct.calcsize(self.get_data_packet_format(ipacket))
-            packet_end_pos = self.fid.tell() + packet_size
-            #packet = self.get_data_packet(ipacket)
-            
-            # seek to the first wanted channel in this data packet
-            self.fid.seek(9 + 2*channel_index, os.SEEK_CUR)
-            for _ in range(0, n_data_points): 
-                try:
-                    waveform[points_read] = struct.unpack('h', self.fid.read(2))[0]
-                except:
-                    waveform[points_read] = 0x8000
-                self.fid.seek(2*self.channel_count - 2, os.SEEK_CUR)
-                points_read += 1
-                if points_read >= index_count:
-                    stop_read = True
-                    break
-            self.fid.seek(packet_end_pos)
-            if stop_read:
-                break
-        # remove the zero-ed empty part of the waveform if we ran 
-        # out of events in the data
-#        print bin_count
-        #waveform = numpy.resize(waveform, index_count)
+        data_gen = self.get_analog_packet(channel_index, start_index, index_count)
+        for index, data_point in enumerate(data_gen): 
+            waveform[index] = data_point
+
         return waveform
 
     def get_data_packet_format(self, index):
