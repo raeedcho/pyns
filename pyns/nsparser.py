@@ -609,6 +609,10 @@ class Nsx22Parser:
         Returns:
             Requested waveform as a numpy.array
         """
+        if index_count <= 0:
+            NeuroshareError(NSReturnTypes.NS_BADINDEX, 
+                            'invalid index count')
+
         if index_count == None:
             index_count = self.n_data_points - start_index
              

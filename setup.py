@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from setuptools import setup
+from distutils.core import setup
 
 classifiers =[
               'Development Status :: 4 - Beta',
@@ -10,16 +10,12 @@ classifiers =[
               ]
 
 setup(name="Py Neuroshare",
-      version="0.3",
+      version="0.4",
       description="Python port of the Neuroshare API",
-      author="Ripple",
-      author_email="ebarcikowski@gmail.com",
-      packages=["pyns", "nsbrowser"],
-      scripts=["examples/pyns_dump",
-               "examples/pyns_header_dump",
-               "nsbrowser/nsbrowser"],
-#      install_requires=["numpy", "psutil", "matplotlib"],
-      classifiers=classifiers,
+      author="Ripple LLC.",
+      author_email="support@rppl.com",
+      packages=["pyns"],
+      classifiers=classifiers
 )
         
 
