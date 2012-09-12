@@ -275,7 +275,7 @@ class NevParser:
                 buf_pos = packet_index*self.bytes_data_packet
                 # In the case of packet_id == 0 (digital events), unit below is 
                 # actually the reason for the digital event to be stored
-                (timestamp, packet_id, unit) = struct.unpack("<IHB", buf[buf_pos:buf_pos+5])
+                (timestamp, packet_id, unit) = struct.unpack("<IHB", buf[buf_pos:buf_pos+7])
                 
                 yield timestamp, packet_id, unit
                 

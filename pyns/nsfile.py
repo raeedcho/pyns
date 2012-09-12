@@ -171,9 +171,9 @@ class NSFile:
                 insert_index += 1
             
     def _load_neuralev(self, file_data):
-        """A lot of work happens when .nev files are read.  This private 
+        """A lot of work happens when NEV files are read.  This private 
         function was created to make the constructor more readable.  This 
-        function facilitates the looping through nev extended headers and 
+        function facilitates the looping through NEV extended headers and 
         data packets and builds all the SegmentEntities, EventEntities, and 
         NeuralEntities.  This should only be called from the constructor.
         """
@@ -238,33 +238,37 @@ class NSFile:
         # timestamp.
         # should look like 
         # for ipacket, ts, packet_id, unit in enumerate(parser.get_packet_header_info())  
-        for (ipacket, packet) in enumerate(parser.get_data_packets()):
+        for (ipacket, packet_data) in enumerate(parser.get_packet_headers()):
+            timestamp = packet_data[0]
+            packet_id = packet_data[1]
+            # In the case of digital events, packet data refers to trigger "reason"
+            unit = packet_data[2] 
             # packet_id == 0 is the case of a digital event
-            if packet.packet_id == 0:
-                if not packet.reason in event_entities.keys():
-                    entity = EventEntity(parser, packet.reason)
+            if packet_id == 0:
+                if not unit in event_entities.keys():
+                    entity = EventEntity(parser, unit)
                     self.entities.append(entity)
-                    event_entities[packet.reason] = entity
-                event_entities[packet.reason].add_packet_data(packet.timestamp, ipacket)
-                event_entities[packet.reason].item_count += 1    
+                    event_entities[unit] = entity
+                event_entities[unit].add_packet_data(timestamp, ipacket)
+                event_entities[unit].item_count += 1    
             # packet_id > 0 (corresponding to electrode_id) is a spike waveform event
             else:
-                entity = entity_search[packet.packet_id]
+                entity = entity_search[packet_id]
                 entity.item_count += 1
-                entity.add_packet_data(packet.timestamp, ipacket)
+                entity.add_packet_data(timestamp, ipacket)
                 # For each unit class we record the entities that have this 
                 # classification. This results in the NeuralEntities and can 
                 # be found with the get_neural_info function
-                if not packet.packet_id in neural_entities.keys():
-                    neural_entities[packet.packet_id] = {}                    
-                unit_class = packet.unit_class
-                if not unit_class in neural_entities[packet.packet_id].keys():
-                    neural_entities[packet.packet_id][unit_class] = NeuralEntity(parser, entity.electrode_id, 
-                                                                             unit_class, entity)
-                neural_entities[packet.packet_id][unit_class].item_count += 1 
+                if not packet_id in neural_entities.keys():
+                    neural_entities[packet_id] = {}                    
+                # unit_class = unitpacket.unit_class
+                if not unit in neural_entities[packet_id].keys():
+                    neural_entities[packet_id][unit] = NeuralEntity(parser, entity.electrode_id, 
+                                                                    unit, entity)
+                neural_entities[packet_id][unit].item_count += 1 
         # If we are at the last event, record the timestamp.  These must
         # be time ordered so this most refer to the last piece of recorded data
-        file_data.time_span = float(packet.timestamp) / parser.timestamp_resolution
+        file_data.time_span = float(timestamp) / parser.timestamp_resolution
                             
         # Build a neural entity for each electrode and each unique unit_class found
         # in the data packets.  The neural_entity dict is looped over and the
@@ -274,7 +278,6 @@ class NSFile:
             for entity_key in sorted(entity_dict.keys()):
                 entity = entity_dict[entity_key]
                 self.entities.append(entity)
-                
         # Comment out this line to reproduce the behavior of the DLL.  Use this
         # line to reproduce the behavior of the Matlab code                    
         #self.entities = [e for e in self.entities if e.item_count > 0]
