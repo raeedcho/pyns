@@ -210,6 +210,7 @@ class NSFile:
         # two integers for each piece of segment or event data.  It is unlikely
         # but this could grow limitless and fill up all available memory, possibly
         # causing issues with the user
+        # BUG: This doesn't work...
         if USE_MEM_CHECK:
             phymem = psutil.avail_phymem() # physical memory in bytes
             neededmem = parser.n_data_packets*8
@@ -231,6 +232,12 @@ class NSFile:
         neural_entities = {}
         # Look through all the NEV data packets and check for digital events and
         # see how many wave forms we have for each entity found in the headers
+        # TODO: implement a fast read function that only returns the data needed
+        # here.  NOT the entire packet.  This will need to include a kind of 
+        # chunk read algorithm.  The needed info will be packet_id, reason or unit,
+        # timestamp.
+        # should look like 
+        # for ipacket, ts, packet_id, unit in enumerate(parser.get_packet_header_info())  
         for (ipacket, packet) in enumerate(parser.get_data_packets()):
             # packet_id == 0 is the case of a digital event
             if packet.packet_id == 0:

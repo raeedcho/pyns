@@ -249,6 +249,38 @@ class NevParser:
             raise NeuroshareError(NSReturnTypes.NS_BADFILE,
                                   "unknown extended header: {0:s}".format(header_type))
         
+    def get_packet_headers(self):
+        """Defines an iterator that will return only the timestamps, electrode_id, 
+        and unit or reason for spike and digital channels respectively.  This 
+        function will read in chunks in hopes to more efficiently (in terms of time)
+        open NEV files.
+        """
+        # TODO: Start here.
+        # read a maximum of 1024 packets at once
+        
+        # move file pointer to the start of data packets
+        self.fid.seek(self.bytes_headers, os.SEEK_SET)
+        
+        max_packet_read = 1024
+        remaining_packets = self.n_data_packets
+        while remaining_packets > 0:
+            # read maximum or to the end of the file
+            packets_to_read = min(max_packet_read, remaining_packets)
+            bytes_to_read = packets_to_read*self.bytes_data_packet
+            # TODO: check for valid read
+            buf = self.fid.read(bytes_to_read)
+            for packet_index in xrange(0, packets_to_read):
+                # Find where the current packet starts in the buffer that
+                # that we have read.
+                buf_pos = packet_index*self.bytes_data_packet
+                # In the case of packet_id == 0 (digital events), unit below is 
+                # actually the reason for the digital event to be stored
+                (timestamp, packet_id, unit) = struct.unpack("<IHB", buf[buf_pos:buf_pos+5])
+                
+                yield timestamp, packet_id, unit
+                
+            remaining_packets -= packets_to_read
+            
     def get_data_packets(self):
         """Generator to loop over all data packets.  Makes use the 
         get_data_packets function 
@@ -276,6 +308,9 @@ class NevParser:
         # values.  The rest is either data from the digital event or
         # the spike waveform
         # Note: Here we are assuming each entry in the waveform is a int16
+        
+        # If packet_index is specified we seek to the wanted packet from
+        # the start of the NEV file.
         if packet_index != None:
             # check bounds of packet_index
             if packet_index >= self.n_data_packets or packet_index < 0:
@@ -389,7 +424,8 @@ class Nsx21Parser:
         channel_ids = numpy.array(header_tup[4:])
         return NEURALSG(header_tup[0], header_tup[1], header_tup[2], 
                         header_tup[3], channel_ids)
-    
+
+    # TODO: implement a "fast reader" for this function as done for 2.2    
     def get_analog_data(self, channel, start_index, index_count): 
         """Return the analog waveform for Nsx2.1 files.  Returns data starting at the 
         start_index bin and the next index_count bins.   If the end of the file is reached 
@@ -558,8 +594,8 @@ class Nsx22Parser:
             packet_index - return the wanted packet.  If unspecified, returns
                 as a yield.  Otherwise, 
         """
-        # We chunks of 1024 to ensure that we don't slow down running by excessive 
-        # read calls, but still we don't crash the machine trying to read 10G at once
+        # We chunks of 1024 points to ensure that we don't slow down running by excessive 
+        # fread calls, but still we don't crash the machine trying to read 10G at once
         max_read_points = 1024
         # max_read_bytes = 2*1024*self.channel_count
         # To support pausing in nsx2.2, we must keep track of the the number of 
@@ -568,23 +604,30 @@ class Nsx22Parser:
         self.fid.seek(self.bytes_headers, os.SEEK_SET)
         points_read = 0
         while points_read < index_count:
+            # Loop over all the pause points as each comes with a header
+            # hold the number of data points in each pause
             for ipacket, data_packet in enumerate(self.data_packet_list):
+                # TODO: do we need to store all the pauses? check how this is used 
+                # in DLL and Matlab
                 # store the number of data points until the next pause
-                # TODO: do we need to store all the pauses? check how this is used
-                # track the time bins remaining until the next pause  
                 remaining_points = data_packet[1]
                 # skip first 3 fields of data packet (B2I)
                 self.fid.seek(9, os.SEEK_CUR)
+                # read through this pause section
                 while remaining_points > 0 and points_read < index_count:
+                    # read 1024 points or the end of the section
                     read_points = min(max_read_points, remaining_points)
-                    # TODO: throw exception on failed read
+                    
                     read_bytes = read_points*2*self.channel_count
                     read_buffer = self.fid.read(read_bytes)
+                    # Throw exception or error on failure
                     if len(read_buffer) != read_bytes:
+                        # TODO: throw exception on failed read
                         msg = 'should have read {0}, but read {1}'.format(read_bytes, len(read_buffer))
                         sys.stderr.write('warning: {0}\n'.format(msg))
                         # raise NeuroshareError(msg)
                         read_points = len(read_buffer)/2/self.channel_count
+                    # Get the wanted data point and yield it
                     for point in range(0, read_points):
                         byte = 2*(channel_index + point*self.channel_count)
                         buf = read_buffer[byte:byte+2]
@@ -615,11 +658,11 @@ class Nsx22Parser:
 
         if index_count == None:
             index_count = self.n_data_points - start_index
-             
+        # initialize an array to return
         waveform = numpy.zeros(index_count)
-        # total bytes of one data packet minus 2 which 
-        # points us to the data we want to read
+        # Use generator defined above to get analog data efficiently
         data_gen = self.get_analog_packet(channel_index, start_index, index_count)
+        # Copy data from generator to waveform 
         for index, data_point in enumerate(data_gen): 
             waveform[index] = data_point
 
