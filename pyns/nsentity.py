@@ -105,7 +105,7 @@ class EventType:
 # PacketData namedtuple is used to store timestamp and packet_index
 # This makes plotting spikes easy and makes it so we can easily 
 # find data associated with an entity easy
-PacketData = namedtuple("PacketData", "timestamp packet_index")
+# PacketData = namedtuple("PacketData", "timestamp packet_index")
         
 class Entity: 
     """Base class for Neuroshare Entities.  This is an abstract class that 
@@ -113,6 +113,8 @@ class Entity:
     instances will of one of the below derived classes (SegmentEntity, 
     AnalogEntity, EventEntity, or NeuralEntity)
     """
+    PACKET_DATA_ALLOC = 1024*1024
+    
     def __init__(self, parser, electrode_id):
         """Initialize base entity class.  This class should not be called
         directly, but by all derived classes.
@@ -131,8 +133,8 @@ class Entity:
         # packet_data list holds PacketData namedtuples to save timestamps and
         # locatations of data packets.  There will be one entry in this
         # list for each "item" associated with the entity  
-        self.packet_data = []
-    
+        # self.packet_data = []
+        self.packet_data = numpy.array([], dtype=numpy.uint32)
     def get_entity_info(self):
         """return the entity info for this entity"""
         return EntityInfo(self.label, self.entity_type, self.item_count)
@@ -141,14 +143,21 @@ class Entity:
         """Add packet data to list.  The length of this list should be the
         same as item_count
         """
-        self.packet_data.append(PacketData(timestamp, packet_index))
-        # The label should not be needed for the base class.  This really should be
-        # considered and abstract class and all derived classes should implement
-        # a label
+        # if we have run out of space, reallocate
+        length = self.packet_data.shape[0]
+        if self.item_count >= length:
+            self.packet_data = numpy.resize(self.packet_data, [length + self.PACKET_DATA_ALLOC, 2])
+        # self.packet_data.append(PacketData(timestamp, packet_index))
+        self.packet_data[self.item_count] = [timestamp, packet_index]
+        
+        self.item_count += 1
+
+    def resize_packet_data(self):
+        """Reset packet data to the number of items found"""
+        self.packet_data = numpy.resize(self.packet_data, [self.item_count, 2])
         
     def get_time_by_index(self, index):
-        """
-        Equivalent to the Neuroshare function ns_GetTimeByIndex.  Returns
+        """Equivalent to the Neuroshare function ns_GetTimeByIndex.  Returns
         the time in seconds from the start of data taking for the time
         corresponding to index.  Note: This is overridden by each 
         derived Entity class
@@ -248,7 +257,7 @@ class SegmentEntity(Entity):
                 unit_class - classification of item (0-255)
         """
         try:
-            packet_index = self.packet_data[index].packet_index
+            packet_index = self.packet_data[index][1]
         except:
             raise NeuroshareError(NSReturnTypes.NS_BADINDEX,
                                   "invalid entity index: {0:d}".format(index))
@@ -362,8 +371,10 @@ class SegmentEntity(Entity):
         # put all the timestamps in a numpy array so that we may search it 
         # with a binary search algorithm from that package
         res = self.parser.timestamp_resolution
-        timestamps = numpy.array([p.timestamp for p in self.packet_data],
-                                 dtype=numpy.double)/res
+        timestamps = numpy.array([data[0] for data in self.packet_data],
+                                 dtype=numpy.double)/res        
+        #timestamps = numpy.array([p.timestamp for p in self.packet_data],
+        #                         dtype=numpy.double)/res
         # fail if time is less than zero or if time is greater than the 
         # last bin
         if time < timestamps[0] and flag == -1:
@@ -406,7 +417,8 @@ class SegmentEntity(Entity):
             raise NeuroshareError(NSReturnTypes.NS_BADINDEX,
                                   "invalid index: {0}".format(index))
         res = self.parser.timestamp_resolution
-        return float(self.packet_data[index].timestamp)/res
+        # return float(self.packet_data[index].timestamp)/res
+        return float(self.packet_data[index][0])/res
     
 class EventEntity(Entity):
     """Holds data and function for digital event entities found in NEV files."""
@@ -453,7 +465,8 @@ class EventEntity(Entity):
     def get_event_data(self, packet_index):
         """equivalent of the ns_GetEventData from the Nueroshare API"""
         time_res = self.parser.timestamp_resolution
-        packet_index = self.packet_data[packet_index].packet_index
+        # packet_index = self.packet_data[packet_index].packet_index
+        packet_index = self.packet_data[packet_index][1]
         packet = self.parser.get_data_packet(packet_index)
         data = (packet.digital_input, packet.input1, packet.input2,
                         packet.input3, packet.input4, packet.input5)
@@ -484,8 +497,10 @@ class EventEntity(Entity):
         # put all the timestamps in a numpy array so that we may search it 
         # with a binary search algorithm from that package
         res = self.parser.timestamp_resolution
-        timestamps = numpy.array([p.timestamp for p in self.packet_data],
+        timestamps = numpy.array([data[0] for data in self.packet_data],
                                  dtype=numpy.double)/res
+        # timestamps = numpy.array([p.timestamp for p in self.packet_data],
+        #                         dtype=numpy.double)/res
         # fail if time is less than zero or if time is greater than the 
         # last bin
         if time < timestamps[0] and flag == -1:
@@ -526,7 +541,8 @@ class EventEntity(Entity):
             raise NeuroshareError(NSReturnTypes.NS_BADINDEX,
                                   "invalid index: {0}".format(index))            
         res = self.parser.timestamp_resolution
-        return float(self.packet_data[index].timestamp)/res
+        # return float(self.packet_data[index].timestamp)/res
+        return float(self.packet_data[index][0])/res
     
 class AnalogEntity(Entity):
     """Holds data and functions needed for analog entities found in NS[0-9] 

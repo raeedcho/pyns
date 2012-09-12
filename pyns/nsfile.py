@@ -250,12 +250,15 @@ class NSFile:
                     self.entities.append(entity)
                     event_entities[unit] = entity
                 event_entities[unit].add_packet_data(timestamp, ipacket)
-                event_entities[unit].item_count += 1    
+                # [2012/09/12 ELB] item_count is now incremented in add_packet_data
+                # event_entities[unit].item_count += 1    
             # packet_id > 0 (corresponding to electrode_id) is a spike waveform event
             else:
                 entity = entity_search[packet_id]
-                entity.item_count += 1
                 entity.add_packet_data(timestamp, ipacket)
+                # [2012/09/12 ELB] item_count is now incremented in add_packet_data
+                # entity.item_count += 1
+                
                 # For each unit class we record the entities that have this 
                 # classification. This results in the NeuralEntities and can 
                 # be found with the get_neural_info function
@@ -265,7 +268,10 @@ class NSFile:
                 if not unit in neural_entities[packet_id].keys():
                     neural_entities[packet_id][unit] = NeuralEntity(parser, entity.electrode_id, 
                                                                     unit, entity)
-                neural_entities[packet_id][unit].item_count += 1 
+                neural_entities[packet_id][unit].item_count += 1
+        for entity in self.entities:
+            if entity.entity_type != EntityType.analog:
+                entity.resize_packet_data()
         # If we are at the last event, record the timestamp.  These must
         # be time ordered so this most refer to the last piece of recorded data
         file_data.time_span = float(timestamp) / parser.timestamp_resolution
