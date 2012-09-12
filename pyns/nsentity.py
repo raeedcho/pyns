@@ -455,7 +455,7 @@ class EventEntity(Entity):
         time_res = self.parser.timestamp_resolution
         packet_index = self.packet_data[packet_index].packet_index
         packet = self.parser.get_data_packet(packet_index)
-        data = (packet.digital_input, packet.input1, packet.digital_input,
+        data = (packet.digital_input, packet.input1, packet.input2,
                         packet.input3, packet.input4, packet.input5)
         return (float(packet.timestamp) / time_res, data)
     
