@@ -63,7 +63,7 @@ in bash, this would look like::
     $ python setup.py install
 
 If using a Windows system, a msi, produced by Python distutils, is also
-avaliable.
+available.
 
 ==============================
 Neuroshare API to pyns Package
