@@ -238,6 +238,7 @@ class NSFile:
         # timestamp.
         # should look like 
         # for ipacket, ts, packet_id, unit in enumerate(parser.get_packet_header_info())  
+        timestamp = 0
         for (ipacket, packet_data) in enumerate(parser.get_packet_headers()):
             timestamp = packet_data[0]
             packet_id = packet_data[1]

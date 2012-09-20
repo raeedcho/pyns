@@ -161,7 +161,6 @@ class NSBrowserMainWindow(QtGui.QMainWindow, Ui_NSBrowserMainWindow):
         # go longer.  This makes the spike plots fill the whole frame.
         time_span = self.hfile.get_file_data("nev").time_span
         
-        
         ts = [float(p.timestamp)*res for p in entity.packet_data]
         y  = numpy.ones(len(ts))
         self.mpl.canvas.ax.bar(ts, y, res)

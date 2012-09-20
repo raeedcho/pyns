@@ -436,10 +436,10 @@ class EventEntity(Entity):
     @property
     def label(self):
         """Return label for EventEntity"""
-        # The following version of the label is consistent with the Mohamed Matlab code 
+        # The following version of the label is consistent with the Matlab code 
         # label = "elec{0:d}".format(self.electrode_id)
         # The following values for the label are consistent with the 
-        # Black Rock DLL.
+        # Black Rock DLL.n
         if self.mode == 129:
             label = "serial"
         else:
@@ -468,8 +468,28 @@ class EventEntity(Entity):
         # packet_index = self.packet_data[packet_index].packet_index
         packet_index = self.packet_data[packet_index][1]
         packet = self.parser.get_data_packet(packet_index)
+
+        # This commented out code seems to be more consistent with the Neuroshare
+        # API, however, it doesn't make as much sense to me.  I'm just going to 
+        # return all the digital data for a given entity for now.
+#        reason = packet.reason
+#        if reason == 0:
+#            data = packet.digital_input
+#        elif reason == 1:
+#            data = packet.input1
+#        elif reason == 2:
+#            data = packet.input2
+#        elif reason == 4:
+#            data = packet.input3
+#        elif reason == 8:
+#            data = packet.input4
+#        elif reason == 16:
+#            data = packet.input5
+#        else:                        
+#            data = (packet.digital_input, packet.input1, packet.input2,
+#                    packet.input3, packet.input4, packet.input5)
         data = (packet.digital_input, packet.input1, packet.input2,
-                        packet.input3, packet.input4, packet.input5)
+        packet.input3, packet.input4, packet.input5)            
         return (float(packet.timestamp) / time_res, data)
     
     def get_index_by_time(self, time, flag=0):

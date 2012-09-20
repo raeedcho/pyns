@@ -70,13 +70,50 @@ class PlotManager:
                 self.next()
         else:
             sys.exit(0)
+            
+    def draw_event_entity(self):
+        """Handles drawing digital events.  For now this always
+        draws the digital port output.  For now we only plot the
+        output for the digital input port
+        """
+        entity = self.entities[self.current_entity]
+        if entity.entity_type != EntityType.event:
+            sys.stderr.write("must specify event entity\n")
+            return False
+        item_count = min(entity.item_count, self.max_analog)
+        title = "16 bit digital input events"
+        if item_count == 0:
+            return False
 
+        self.ax.cla()
+        
+        self.ax.set_title(title)
+        self.ax.set_xlabel('[s]')
+        self.ax.set_ylabel('')
+        
+        timestamps = numpy.zeros(item_count, dtype=numpy.double)
+        values = numpy.zeros(item_count, dtype=numpy.uint16)
+        for item in xrange(0, item_count):
+            data_rt = entity.get_event_data(item)
+            timestamps[item] = data_rt[0]
+            values[item] = data_rt[1][0]
+           
+        self.ax.scatter(timestamps, values)
+
+        self.fig.canvas.draw()
+        return True
+    
     def draw_entity(self):
+        """This function is called each time an entity is called to draw.
+        It looks at the entity and calls the appropriate function.
+        """
         entity = self.entities[self.current_entity]
         if entity.entity_type == EntityType.segment:
             return self.draw_segment_entity()
         elif entity.entity_type == EntityType.analog:
             return self.draw_analog_entity()
+        elif entity.entity_type == EntityType.event:
+            return self.draw_event_entity()        
         # return false if we don't have an analog or segment entity
         return False
 
@@ -169,9 +206,11 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
                         action="store_true", help="Only show waveforms for analog entities")
     parser.add_argument("-s", "--segment-only", dest="segment_only", default=False,
                         action="store_true", help="Only show waveforms for segment entities")
+    parser.add_argument("-e", "--event-only", dest="event_only", default=False,
+                        action="store_true", help="Only show digital event data")    
     parser.add_argument("-m", "--max-segments", dest="max_segments", default=100,
                         type=int, help="Only overlay MAX_SEGMENTS spikes")
-    parser.add_argument("-n", "--max-analog", dest="max_analog", default=30000,
+    parser.add_argument("-n", "--max-analog", dest="max_analog", default=240000,
                         type=int, help="Only overlay MAX_ANALOG time bins")
     parser.add_argument('filename', nargs="?", type=str, metavar="NEV_FILE",
                         help="use NEV_FILE as input (optional)", default=None)
@@ -201,6 +240,8 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
         wanted_entities = [e for e in nsfile.get_entities(EntityType.analog)]
     elif args.segment_only:
         wanted_entities = [e for e in nsfile.get_entities(EntityType.segment)]
+    elif args.event_only:
+        wanted_entities = list(nsfile.get_entities(EntityType.event))
     else:
         wanted_entities = [e for e in nsfile.get_entities()]
 
