@@ -31,6 +31,10 @@ class PlotManager:
                  max_segment=100, max_analog=30000):
         self.entities = entities
         self.current_entity = skip
+        
+        if skip >= len(self.entities):
+            return
+        
         self.fig = pyplot.figure()
         self.ax = self.fig.add_subplot(111)
         self.fig.canvas.mpl_connect('key_press_event', self.onpress)

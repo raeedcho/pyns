@@ -161,7 +161,7 @@ class NSBrowserMainWindow(QtGui.QMainWindow, Ui_NSBrowserMainWindow):
         # go longer.  This makes the spike plots fill the whole frame.
         time_span = self.hfile.get_file_data("nev").time_span
         
-        ts = [float(p.timestamp)*res for p in entity.packet_data]
+        ts = [float(p[0])*res for p in entity.packet_data]
         y  = numpy.ones(len(ts))
         self.mpl.canvas.ax.bar(ts, y, res)
         self.mpl.canvas.ax.set_xlabel("time [s]")
@@ -235,7 +235,8 @@ class NSBrowserMainWindow(QtGui.QMainWindow, Ui_NSBrowserMainWindow):
         self.item_list.setCurrentItem(spikes_item)
         
     def segment_item_selected(self):
-        """item is selected from the item list. Draw the relevant quantity."""
+        """item is selected from the item list. Draw the relevant 
+antity."""
         list_item = self.item_list.currentItem()
         segment_item = self.segment_list.currentItem()
         # if nothing is selected don't plot.  This occurs when the item_list

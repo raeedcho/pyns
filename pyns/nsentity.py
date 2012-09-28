@@ -113,7 +113,8 @@ class Entity:
     instances will of one of the below derived classes (SegmentEntity, 
     AnalogEntity, EventEntity, or NeuralEntity)
     """
-    PACKET_DATA_ALLOC = 1024*1024
+    # allocate space for 10k NEV data at a time
+    PACKET_DATA_ALLOC = 10*1024
     
     def __init__(self, parser, electrode_id):
         """Initialize base entity class.  This class should not be called
