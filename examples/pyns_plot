@@ -28,7 +28,7 @@ class PlotManager:
     and p goes back to the previous entity.
     """
     def __init__(self, entities, skip=0, 
-                 max_segment=100, max_analog=30000):
+                 max_segment=100, max_analog=90000):
         self.entities = entities
         self.current_entity = skip
         
@@ -39,6 +39,9 @@ class PlotManager:
         self.ax = self.fig.add_subplot(111)
         self.fig.canvas.mpl_connect('key_press_event', self.onpress)
         
+        self.current_segment = 0
+        self.current_analog = 0
+        
         self.max_segment = max_segment
         self.max_analog = max_analog
         
@@ -48,11 +51,15 @@ class PlotManager:
             self.next()
         
     def onpress(self, event):
-        if event.key not in ('n', 'p', 'q'): return
+        if event.key not in ('n', 'p', 'q', 'f', 'b'): return
         if event.key == 'n':
             self.next()
         if event.key == 'p':
             self.previous()
+        if event.key == 'f':
+            self.forward()
+        if event.key == 'b':
+            self.back()
         if event.key == 'q':
             if tkMessageBox.askokcancel('pyns_plot', 'Quit pyns_plot?'):
                 sys.exit(0)
@@ -66,6 +73,9 @@ class PlotManager:
                 self.previous()
 
     def next(self):
+        self.current_analog = 0
+        self.current_segment = 0
+        
         if self.current_entity < len(self.entities) - 1:
             self.current_entity += 1
             # if we fail to draw an entity (basically if the 
@@ -157,7 +167,16 @@ class PlotManager:
         self.fig.canvas.draw()
         return True
 
+    def forward(self):
+        self.current_analog += self.max_analog
+        self.current_segment += self.max_segment
+        
+        self.draw_entity()
     
+    def back(self):
+        self.current_analog -= self.max_analog
+        self.current_segment -= self.current_segment
+        
     def draw_analog_entity(self):
         """A utility function to draw any analog entity"""
         
@@ -167,7 +186,7 @@ class PlotManager:
             return False
     
         self.ax.cla()        
-        item_count = min(self.max_analog, entity.item_count)
+        item_count = min(self.max_analog, self.current_analog + entity.item_count)
         if item_count == 0:
             return False
 
@@ -184,9 +203,10 @@ class PlotManager:
         self.ax.set_xlabel('[s]')
         self.ax.set_ylabel('[uV]')
             
-        waveform = entity.get_analog_data(0, item_count)
+        waveform = entity.get_analog_data(self.current_analog, item_count)
         # create physical time dimensions in seconds                
-        time = numpy.arange(0, len(waveform), dtype=numpy.double)
+        time = numpy.arange(self.current_analog, self.current_analog + item_count, 
+                            dtype=numpy.double)
         time *= 1.0/analog_info.sample_rate
         waveform *= analog_info.resolution
         self.ax.plot(time, waveform)

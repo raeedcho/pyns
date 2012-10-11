@@ -602,17 +602,31 @@ class Nsx22Parser:
         # data points found before the next pause, this is stored in 
         # self.data_packet_list.
         self.fid.seek(self.bytes_headers, os.SEEK_SET)
+        # skip to the wanted start index
+        remaining_skipped_points = start_index
+        skipped_packets = 0
+        
+        for data_packet in self.data_packet_list:
+            self.fid.seek(9, os.SEEK_CUR)
+            if remaining_skipped_points <= data_packet[1]:
+                self.fid.seek(remaining_skipped_points*self.channel_count*2, os.SEEK_CUR)
+                break
+            skipped_packets += 1
+            remaining_skipped_points -= data_packet[1]
+            self.fid.seek(data_packet[1], os.SEEK_CUR)
         points_read = 0
         while points_read < index_count:
             # Loop over all the pause points as each comes with a header
             # hold the number of data points in each pause
-            for ipacket, data_packet in enumerate(self.data_packet_list):
+            for ipacket, data_packet in enumerate(self.data_packet_list[skipped_packets:]):
                 # TODO: do we need to store all the pauses? check how this is used 
                 # in DLL and Matlab
                 # store the number of data points until the next pause
-                remaining_points = data_packet[1]
+                 
+                remaining_points = data_packet[1] - remaining_skipped_points
                 # skip first 3 fields of data packet (B2I)
-                self.fid.seek(9, os.SEEK_CUR)
+                if ipacket > 0:
+                    self.fid.seek(9, os.SEEK_CUR)
                 # read through this pause section
                 while remaining_points > 0 and points_read < index_count:
                     # read 1024 points or the end of the section
@@ -652,12 +666,17 @@ class Nsx22Parser:
         Returns:
             Requested waveform as a numpy.array
         """
-        if index_count <= 0:
+        if index_count <= 0 or \
+            index_count + start_index > self.n_data_points:
             NeuroshareError(NSReturnTypes.NS_BADINDEX, 
                             'invalid index count')
-
+        if start_index < 0:
+            NeuroshareError(NSReturnTypes.NS_BADINDEX,
+                            'invalid start index')
+        
         if index_count == None:
             index_count = self.n_data_points - start_index
+        
         # initialize an array to return
         waveform = numpy.zeros(index_count)
         # Use generator defined above to get analog data efficiently
