@@ -139,9 +139,9 @@ class PlotManager:
         if entity.entity_type != EntityType.segment:
             sys.stderr.write("must specify segment entity\n")
             return False
-        item_count = min(entity.item_count, self.max_segment)
+        item_count = min(entity.item_count - self.current_segment, self.max_segment)
         title = "Overlay of {0:d} segment waveforms for {1:s}".format(item_count, entity.label)
-        if item_count == 0:
+        if item_count <= 0:
             return False
 
         self.ax.cla()
@@ -153,7 +153,7 @@ class PlotManager:
         
         self.ax.set_xlabel('[ms]')
         self.ax.set_ylabel('[uV]')
-        for item in range(0, item_count):
+        for item in range(self.current_segment, self.current_segment + item_count):
             # get the segment info for the time resolution, 
             # though it should always be 30000 
             segment_info = entity.get_segment_info()
@@ -168,14 +168,19 @@ class PlotManager:
         return True
 
     def forward(self):
-        self.current_analog += self.max_analog
-        self.current_segment += self.max_segment
         
+        self.current_analog = min(self.current_analog + self.max_analog,
+                                  self.entities[self.current_entity].item_count)
+        self.current_segment = min(self.current_segment + self.max_segment,
+                                  self.entities[self.current_entity].item_count)        
         self.draw_entity()
     
     def back(self):
-        self.current_analog -= self.max_analog
-        self.current_segment -= self.current_segment
+        self.current_analog = max(self.current_analog - self.max_analog, 0)
+        self.current_segment = max(self.current_segment - self.max_segment, 0)
+        
+        self.draw_entity()
+        
         
     def draw_analog_entity(self):
         """A utility function to draw any analog entity"""
@@ -186,8 +191,8 @@ class PlotManager:
             return False
     
         self.ax.cla()        
-        item_count = min(self.max_analog, self.current_analog + entity.item_count)
-        if item_count == 0:
+        item_count = min(self.max_analog, entity.item_count - self.current_analog)
+        if item_count <= 0:
             return False
 
         # The analog info will be useful to get time axis
@@ -205,7 +210,7 @@ class PlotManager:
             
         waveform = entity.get_analog_data(self.current_analog, item_count)
         # create physical time dimensions in seconds                
-        time = numpy.arange(self.current_analog, self.current_analog + item_count, 
+        time = numpy.arange(self.current_analog, self.current_analog + len(waveform), 
                             dtype=numpy.double)
         time *= 1.0/analog_info.sample_rate
         waveform *= analog_info.resolution
@@ -238,17 +243,30 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
                         type=int, help="Only overlay MAX_ANALOG time bins")
     parser.add_argument('filename', nargs="?", type=str, metavar="NEV_FILE",
                         help="use NEV_FILE as input (optional)", default=None)
+    
     args = parser.parse_args()
     # check options conflicts
     if args.segment_only and args.analog_only:
         parser.error("can't specify both analog-only and segment-only options")
-        
+
+    root = Tkinter.Tk()
+    root.withdraw()    
+
+    message = """pyns_plot shows the power and ease of using Python for quick analysis applications.
+    Browse Neuroshare entities using the following keys: 
+        'n' - next entities, 
+        'p' - previous entity, 
+        'f' - forward in time, 
+        'b' - back in time,
+        'q' - quit pyns_plot.
+        """
+    tkMessageBox.showinfo('pyns_plot Help', message)    
+    
     # check that we have an input file and that it opens successfully  
     if not args.filename:
         # if no file is specified, we'll open a simple tk file dialog and
         # and have the user specify a file
-        root = Tkinter.Tk()
-        root.withdraw()
+
         nev_formats = [ ("NEV", "*.nev"), ("NSx", "*.ns?") ]
         filename = tkFileDialog.askopenfilename(title="Choose a file",
                                                 filetypes=nev_formats)
@@ -268,6 +286,7 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
         wanted_entities = list(nsfile.get_entities(EntityType.event))
     else:
         wanted_entities = [e for e in nsfile.get_entities()]
+
 
     manager = PlotManager(wanted_entities, args.skip, 
                           args.max_segments, args.max_analog) 
