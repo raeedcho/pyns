@@ -213,7 +213,7 @@ class PlotManager:
         time = numpy.arange(self.current_analog, self.current_analog + len(waveform), 
                             dtype=numpy.double)
         time *= 1.0/analog_info.sample_rate
-        waveform *= analog_info.resolution
+        #waveform *= analog_info.resolution
         self.ax.plot(time, waveform)
         
         self.fig.canvas.draw()
