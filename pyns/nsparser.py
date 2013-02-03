@@ -110,7 +110,8 @@ def _proc_timestamp_struct(tup):
     input: tup holding eight integers
     returns: datetime instance
     """
-    return datetime(*(tup[0:2] + tup[3:7] + (tup[7]*1000,)))
+    return datetime(tup[0], tup[1], tup[3], tup[4],
+        tup[5], tup[6], tup[7]*1000)
 
 def ParserFactory(filename):
     """ParserFactory provides the interface to the Parser classes listed
@@ -721,8 +722,7 @@ class Nsx22Parser:
 # Debugging section
 if __name__ == "__main__":
     #infile = "/home/elliottb/ripple/test_data/datafile0001.nev"
-    infile = "/home/elliottb/ripple/workspace/nsNEVLibrary/test/20050801-091145-001.nev"
-
+    infile = "C:/Users/elliottb/Desktop/stim_tests/datafile0006.nev"
     parser = ParserFactory(infile)
     for header in parser.get_extended_headers():
         print header

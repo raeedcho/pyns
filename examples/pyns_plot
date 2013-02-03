@@ -110,8 +110,12 @@ class PlotManager:
         for item in xrange(0, item_count):
             data_rt = entity.get_event_data(item)
             timestamps[item] = data_rt[0]
-            values[item] = data_rt[1][0]
-           
+            values[item] = 0
+            for iData in range(0, 6):
+                if data_rt[1][iData] != 0:
+                    values[item] = data_rt[1][iData]
+                    break
+
         self.ax.scatter(timestamps, values)
 
         self.fig.canvas.draw()

@@ -461,7 +461,7 @@ class EventEntity(Entity):
         max_data_length = 2
         event_type = EventType.byte
         return EventInfo(event_type, min_data_length, max_data_length,
-                         label)
+                         self.label)
         
     def get_event_data(self, packet_index):
         """equivalent of the ns_GetEventData from the Nueroshare API"""
