@@ -21,9 +21,8 @@ from pyns.nsentity import EntityType
 
 def dump_info(info):
     """An ugly, direct dump of any class.  A place-holder before a pretty
-    dump routine is created for each of the info namedtuples.  
-    Note: The output of this doesn't look as bad as you may thing.  
-    Going to leave it for now.
+    dump routine is created for each of the info namedtuples.  Note: The output
+    of this doesn't look as bad as you may thing.  Going to leave it for now.
     """
     text = ""
     for (key, value) in info._asdict().iteritems():
@@ -31,17 +30,18 @@ def dump_info(info):
     return text
 
 class NSAboutDialog(QtGui.QDialog, Ui_NSAboutDialog):
-    """Provide small about dialog.  Consists of a simple
-    dialog, rich text label, and okay button"""
+    """Provide small about dialog.  Consists of a simple dialog, rich text
+    label, and okay button.
+    """
     def __init__(self, parent=None):
         super(NSAboutDialog, self).__init__(parent)
         self.setupUi(self)
         self.okay_button.clicked.connect(self.close)
 
 class NSInfoDialog(QtGui.QDialog, Ui_NSInfoDialog):
-    """Dialog to display the results of the pyns versions of the
-    \"info\" functions of the Neuroshare API.  Consists of a simple
-    dialog, text browser, and okay button.
+    """Dialog to display the results of the pyns versions of the "info"
+    functions of the Neuroshare API.  Consists of a simple dialog, text browser,
+    and okay button.
     """
     def __init__(self, parent=None):
         super(NSInfoDialog, self).__init__(parent)
