@@ -180,7 +180,9 @@ class NevParser:
         
     @property
     def file_type(self):
-        """Static functiont to return the 8 byte header associated with this file."""
+        """Static functiont to return the 8 byte header associated with this
+        file.
+        """
         return "NEURALEV"
             
     def get_basic_header(self):
@@ -198,8 +200,8 @@ class NevParser:
         if tup[0] != "NEURALEV":
             raise NeuroshareError(NSReturnTypes.NS_BADFILE,
                                   "cannot find NEURALEV header\n")
-        # NEURALEV files contains Windows SYSTEMTIME struct.  We want to store this
-        # as a Python datetime class
+        # NEURALEV files contains Windows SYSTEMTIME struct.  We want to store
+        # this as a Python datetime class
         timestamp = _proc_timestamp_struct(tup[8:16])
         return NEURALEV._make(tup[:8] + (timestamp,) + tup[16:])
     
