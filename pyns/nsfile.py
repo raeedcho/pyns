@@ -125,7 +125,7 @@ class NSFile:
                     self.entities.append(entity)
                 file_data.time_span = parser.time_span
                 self._files.append(file_data)
-            elif parser.file_type == "NEURALCD":
+            elif parser.file_type == "NEURALCD" or parser.file_type == "NEUCDFLT":
                 header = parser.get_basic_header()
                 # loop over each CC header found in the NEURALCD file.  Create an
                 # AnalogEntity using the data found in those headers

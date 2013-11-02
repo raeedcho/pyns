@@ -128,7 +128,7 @@ def ParserFactory(filename):
         return NevParser(fid)
     elif file_type == "NEURALSG":
         return Nsx21Parser(fid)
-    elif file_type == "NEURALCD":
+    elif file_type == "NEURALCD" or file_type == "NEUCDFLT":
         return Nsx22Parser(fid)
     # failed to find valid file header
     raise NeuroshareError(NSReturnTypes.NS_BADFILE, 
@@ -491,11 +491,18 @@ class Nsx22Parser:
             fid -- valid file pointer
         """        
         self.fid = fid
-        self.is_float = self.fid.name.endswith('.nf3')
+        # self.is_float = self.fid.name.endswith('.nf3')
         self.bytes_per_point = 2
+        # find the file size simply by skipping to the end of the file
+        self.fid.seek(0, os.SEEK_SET)
+        # Get file header so we may check that the data file is of type float or int
+        header_type = struct.unpack("<8s", self.fid.read(8))[0]
+        self.is_float = False
+        if header_type == "NEUCDFLT":
+            self.is_float = True
         if self.is_float:
             self.bytes_per_point = 4
-        # find the file size simply by skipping to the end of the file
+        # calculate size of the file
         self.fid.seek(0, os.SEEK_END)
         self.size = self.fid.tell()
         
@@ -565,7 +572,7 @@ class Nsx22Parser:
         self.fid.seek(0, os.SEEK_SET)
         buf = self.fid.read(NEURALCD_SIZE)
         tup =  struct.unpack(NEURALCD_FORMAT, buf)
-        if tup[0] != "NEURALCD":
+        if not(tup[0] == "NEURALCD" or tup[0] == "NEUCDFLT"):
             raise NeuroshareError(NSReturnTypes.NS_BADFILE,
                                   "cannot find NEURALCD header\n")
         timestamp = _proc_timestamp_struct(tup[8:16])
@@ -574,6 +581,8 @@ class Nsx22Parser:
     @property
     def file_type(self):
         """Return 8 byte header for this file.  Always NEURALCD"""
+        if self.is_float:
+            return "NEUCDFLT"
         return "NEURALCD"
     
     def get_extended_headers(self):
