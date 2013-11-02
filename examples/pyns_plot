@@ -51,12 +51,12 @@ class PlotManager:
             self.next()
         
     def onpress(self, event):
-        if event.key not in ('n', 'p', 'q', 'f', 'b'): return
+        if event.key not in ('n', 'p', 'q', 't', 'b'): return
         if event.key == 'n':
             self.next()
         if event.key == 'p':
             self.previous()
-        if event.key == 'f':
+        if event.key == 't':
             self.forward()
         if event.key == 'b':
             self.back()
@@ -260,7 +260,7 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
     Browse Neuroshare entities using the following keys: 
         'n' - next entities, 
         'p' - previous entity, 
-        'f' - forward in time, 
+        't' - forward in time,
         'b' - back in time,
         'q' - quit pyns_plot.
         """
@@ -271,9 +271,9 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
         # if no file is specified, we'll open a simple tk file dialog and
         # and have the user specify a file
 
-        nev_formats = [ ("NEV", "*.nev"), ("NSx", "*.ns?") ]
-        filename = tkFileDialog.askopenfilename(title="Choose a file",
-                                                filetypes=nev_formats)
+        nev_formats = [ ("NEV", "*.nev"), ("NSx", "*.ns?"), ("NFx", "*.nf3") ]
+        filename = tkFileDialog.askopenfilename(title="Choose a file", filetypes=nev_formats)
+        #
         if len(filename) == 0:
             parser.error('selected invalid NEV or NSx file.')
     else:
@@ -291,7 +291,6 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
     else:
         wanted_entities = [e for e in nsfile.get_entities()]
 
+    manager = PlotManager(wanted_entities, args.skip, args.max_segments, args.max_analog)
 
-    manager = PlotManager(wanted_entities, args.skip, 
-                          args.max_segments, args.max_analog) 
     pyplot.show()

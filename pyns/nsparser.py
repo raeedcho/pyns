@@ -360,6 +360,8 @@ class Nsx21Parser:
         """  
         self.fid = fid
         self.fid.seek(24, os.SEEK_SET)
+        # there are no 2.1 float streams, but the AnalogEntity class will look for this number
+        self.is_float = False
         buf = self.fid.read(8)
         (self.period, self.channel_count) = struct.unpack("II", buf)
 
@@ -489,7 +491,10 @@ class Nsx22Parser:
             fid -- valid file pointer
         """        
         self.fid = fid
-        
+        self.is_float = self.fid.name.endswith('.nf3')
+        self.bytes_per_point = 2
+        if self.is_float:
+            self.bytes_per_point = 4
         # find the file size simply by skipping to the end of the file
         self.fid.seek(0, os.SEEK_END)
         self.size = self.fid.tell()
@@ -499,9 +504,8 @@ class Nsx22Parser:
         # of extended headers (CC headers) found in this file
         self.channel_count = header.channel_count
         self.bytes_headers = header.bytes_headers
-        
         # store the number of data packets (i.e. pauses).  This list will
-        # hold a tuple of (timestamps, datapoints until end of file or next pause)
+        # hold a tuple of (timestamps, data points until end of file or next pause)
         self.data_packet_list = []
         self.fid.seek(self.bytes_headers, os.SEEK_SET)
         while True:
@@ -513,12 +517,22 @@ class Nsx22Parser:
                 raise NeuroshareError(NSReturnTypes.NS_BADFILE,
                                       "Invalid data packet header: {0}".format(head))
             self.data_packet_list.append((ts, n_data_points))
-            self.fid.seek(self.channel_count*n_data_points*2, os.SEEK_CUR)
+            # skip past all the data point is this pause period to get the header of the next data packet
+            if self.is_float:
+                # in the case of float streams we have 4 bytes per channel
+                self.fid.seek(self.channel_count*n_data_points * 4, os.SEEK_CUR)
+            else:
+                # with normal NSX2.2 we have shorts for each point
+                self.fid.seek(self.channel_count*n_data_points * 2, os.SEEK_CUR)
             
-        # now that we know channel count we can calcuate the format and size of one data packet
-        self.data_packet_form = "<B2I{0:d}h".format(self.channel_count)
+        # now that we know channel count we can calculate the format and size of one data packet
+        if self.is_float:
+            # in the case of float stream each point is a float
+            self.data_packet_form = "<B2I{0:d}f".format(self.channel_count)
+        else:
+            # normal data point have shorts as data points
+            self.data_packet_form = "<B2I{0:d}h".format(self.channel_count)
         self.data_packet_size = struct.calcsize(self.data_packet_form)
-        
         # record the conversion between ADC and physical values.  This is will be needed
         # when we read the analog waveforms 
 #        self.scale = float(header.max_analog_value - header.min_analog_value)
@@ -528,6 +542,7 @@ class Nsx22Parser:
         
     @property
     def n_data_points(self):
+        """Return the number of data points from each pause section"""
         n_data_points = 0
         for points in self.data_packet_list:
             n_data_points += points[1]
@@ -542,7 +557,7 @@ class Nsx22Parser:
         """Return time_span of data in this file.  Calculated from number of data
         points, period, and the clock speed
         """        
-        return float(self.n_data_points*self.period) / self.timestamp_resolution
+        return float(self.n_data_points * self.period) / self.timestamp_resolution
             
     def get_basic_header(self):
         """return the basic NEURALCD file header using the NEURALCD struct defined above."""
@@ -583,7 +598,7 @@ class Nsx22Parser:
             if header_index > self.channel_count or header_index < 0:
                 raise NeuroshareError(NSReturnTypes.NS_BADINDEX,
                                       "invalid header index: {0}".format(header_index))
-            position = NEURALCD_SIZE + CC_SIZE*header_index
+            position = NEURALCD_SIZE + CC_SIZE * header_index
             self.fid.seek(position, os.SEEK_SET)
         buf = self.fid.read(CC_SIZE)
         return CC._make(struct.unpack(CC_FORMAT, buf))
@@ -635,7 +650,7 @@ class Nsx22Parser:
                     # read 1024 points or the end of the section
                     read_points = min(max_read_points, remaining_points)
                     
-                    read_bytes = read_points*2*self.channel_count
+                    read_bytes = read_points * self.bytes_per_point * self.channel_count
                     read_buffer = self.fid.read(read_bytes)
                     # Throw exception or error on failure
                     if len(read_buffer) != read_bytes:
@@ -643,12 +658,15 @@ class Nsx22Parser:
                         msg = 'should have read {0}, but read {1}'.format(read_bytes, len(read_buffer))
                         sys.stderr.write('warning: {0}\n'.format(msg))
                         # raise NeuroshareError(msg)
-                        read_points = len(read_buffer)/2/self.channel_count
+                        read_points = len(read_buffer) / self.bytes_per_point / self.channel_count
                     # Get the wanted data point and yield it
                     for point in range(0, read_points):
-                        byte = 2*(channel_index + point*self.channel_count)
-                        buf = read_buffer[byte:byte+2]
-                        data = struct.unpack('<h', buf)[0]
+                        data_string = '<h'
+                        if self.is_float:
+                            data_string = '<f'
+                        byte = self.bytes_per_point * (channel_index + point * self.channel_count)
+                        buf = read_buffer[byte:byte + self.bytes_per_point]
+                        data = struct.unpack(data_string, buf)[0]
                         points_read += 1
                         yield data 
                         if points_read == index_count:

@@ -99,6 +99,7 @@ class NSFile:
             # We are reversing them here so that the file order with be similar
             # to that found in other Neuroshare codes.
             nsx_files = glob(filename[:-4] + '.ns[1-9]')
+            nsx_files += glob(filename[:-4] + '.nf3')
 #            nsx_files.reverse()
             file_list = glob(filename[:-4] + '.nev') + nsx_files
         

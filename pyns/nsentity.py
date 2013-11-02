@@ -599,6 +599,10 @@ class AnalogEntity(Entity):
         # find where the data for this file will be found
         self.channel_index = channel_index
         self.scale = scale
+        # if we have a float stream, disregard scale (it should always be one, but is sometimes mis-reported
+        # in headers.
+        if self.parser.is_float:
+            self.scale = 1
          
     @property
     def sample_freq(self):
