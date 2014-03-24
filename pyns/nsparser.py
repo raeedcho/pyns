@@ -45,7 +45,7 @@ from nsexceptions import NeuroshareError, NSReturnTypes
 # header and extended header formats for the
 # .nev files
 NEURALEV_FORMAT = "<8s2BH4I8H32s256sI"
-NEUEVWAV_FORMAT = "<8sH2B2H2h2B10s"
+NEUEVWAV_FORMAT = "<8sH2B2H2h2Bf6s"
 NEUEVLBL_FORMAT = "<8sh16s6s"
 NEUEVFLT_FORMAT = "<8sH2IHIIH2s"
 DIGLABEL_FORMAT = "<8s16sB7s"
@@ -57,18 +57,18 @@ NEURALEV_SIZE = struct.calcsize(NEURALEV_FORMAT)
 NEV_EXT_HEADER_SIZE = struct.calcsize(NEUEVWAV_FORMAT)
 # structs for headers and data packets for NEURALEV files
 NEURALEV = namedtuple("NEURALEV", 
-                      "header_type file_rev_major file_rev_minor "\
+                      "header_type file_rev_major file_rev_minor " \
                       "file_flags bytes_headers bytes_data_packet timestamp_resolution " \
-                      "sample_resolution time_origin "\
+                      "sample_resolution time_origin " \
                       "application comment n_ext_headers")
 NEUEVWAV = namedtuple("NEUEVWAV",
-                      "header_type packet_id phys_conn conn_pin dig_factor "\
-                      "energy_thres high_thres low_thres number_sorted_units "\
-                      "bytes_per_waveform")
+                      "header_type packet_id phys_conn conn_pin dig_factor " \
+                      "energy_thres high_thres low_thres number_sorted_units " \
+                      "bytes_per_waveform stim_amp_dig_factor")
 NEUEVLBL = namedtuple("NEUEVLBL",
                       "header_type packet_id label")
-NEUEVFLT = namedtuple("NEUEVFLT", "header_type packet_id "\
-                      "high_freq_corner high_freq_order high_filter_type "\
+NEUEVFLT = namedtuple("NEUEVFLT", "header_type packet_id " \
+                      "high_freq_corner high_freq_order high_filter_type " \
                       "low_freq_corner low_freq_order low_filter_type")
 DIGLABEL = namedtuple("DIGLABEL", "header_type label mode")
 # struct for digital events in NEV file data packets
@@ -703,7 +703,6 @@ class Nsx22Parser:
         if start_index < 0:
             NeuroshareError(NSReturnTypes.NS_BADINDEX,
                             'invalid start index')
-        
         if index_count == None:
             index_count = self.n_data_points - start_index
         
@@ -755,5 +754,3 @@ if __name__ == "__main__":
     parser = ParserFactory(infile)
     for header in parser.get_extended_headers():
         print header
-        
-    

@@ -106,7 +106,6 @@ class EventType:
 # This makes plotting spikes easy and makes it so we can easily 
 # find data associated with an entity easy
 # PacketData = namedtuple("PacketData", "timestamp packet_index")
-        
 class Entity: 
     """Base class for Neuroshare Entities.  This is an abstract class that 
     holds data and functions common to all neuroshare entities.  Actual, 
@@ -114,7 +113,7 @@ class Entity:
     AnalogEntity, EventEntity, or NeuralEntity)
     """
     # allocate space for 10k NEV data at a time
-    PACKET_DATA_ALLOC = 10*1024
+    PACKET_DATA_ALLOC = 10 * 1024
     
     def __init__(self, parser, electrode_id):
         """Initialize base entity class.  This class should not be called
@@ -219,12 +218,16 @@ class SegmentEntity(Entity):
         return "elec{0:d}".format(self.electrode_id)
         
     def get_segment_info(self):
-        """return the segment info struct"""
+        """return the segment info struct for this entity"""
         source_count = 1
         min_sample_count = self.parser.sample_count
         max_sample_count = min_sample_count
         sample_rate = self.parser.timestamp_resolution
-        units = "V"
+        # in the case of stimulation makers (with electrode ids > 5120)
+        # the data is returned in V.  For all normal neural data uV is used.
+        units = "uV"
+        if self.electrode_id > 5120 and self.electrode_id < 10240:
+            units = "V"
         return SegmentInfo(source_count, min_sample_count, 
                            max_sample_count, sample_rate, units)
         
@@ -254,7 +257,8 @@ class SegmentEntity(Entity):
             tuple - (timestamp, waveform, unit_id)
                 timestamp - time of this item in seconds from start of 
                     data taking
-                waveform - waveform found in data packet
+                waveform - waveform found in data packet.  The units may 
+                   be uV (with Neural Data) or V (with stim data)
                 unit_class - classification of item (0-255)
         """
         try:
@@ -264,16 +268,23 @@ class SegmentEntity(Entity):
                                   "invalid entity index: {0:d}".format(index))
         packet = self.parser.get_data_packet(packet_index)
         timestamp = float(packet.timestamp) / self.parser.timestamp_resolution
+        # Get all extended headers corresponding to this electrode
         headers = self.get_extended_headers()
         
         scale = 1.0
         if "NEUEVWAV" in headers.keys():
             header = headers["NEUEVWAV"]
             if header.dig_factor != 0:
-                scale = float(header.dig_factor) / 1000         
-        
-        waveform = packet.waveform*scale
-            
+                # Scale factor in header is in units of ADC per nanovolt.  Put
+                # it into ADC to microvolts
+                scale = float(header.dig_factor) / 1000
+            elif header.stim_amp_dig_factor != 0:
+                # For stim markers, the scale conversion is stored as a float 
+                # and is in units of ADC to volts.  Purposly return data in
+                # Volts in the case of stimulation markers.
+                scale = header.stim_amp_dig_factor
+
+        waveform = packet.waveform * scale
         # Get bitmasked unit id.  Taken from nsNEVLibrary's XfmUnitNevToNs
         if packet.unit_class == 0:
             unit_id = 0
@@ -322,12 +333,12 @@ class SegmentEntity(Entity):
             probe_info = "module {0:d}, pin {1:d}".format(header.phys_conn, header.conn_pin)
             if header.dig_factor != 0.0:
                 # This is another strange convention to be compatible with the Neuroshare DLLs.
-                # These check is likely NOT compatible with many data files include those
+                # This check is likely NOT compatible with many data files include those
                 # produced by Ripple devices.
                 #if self.electrode_id >= 129 and self.electrode_id <= 144:                
                 #     resolution = header.dig_factor*1.0e-6
                 # else:
-                resolution = header.dig_factor*1.0e-3
+                resolution = header.dig_factor * 1.0e-3
                 
         if "NEUEVFLT" in headers.keys():
             header = headers["NEUEVFLT"]

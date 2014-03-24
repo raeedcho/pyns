@@ -214,7 +214,7 @@ class NSFile:
         # BUG: This doesn't work...
         if USE_MEM_CHECK:
             phymem = psutil.avail_phymem() # physical memory in bytes
-            neededmem = parser.n_data_packets*8
+            neededmem = parser.n_data_packets * 8
             if neededmem > phymem:
                 sys.stderr.write("warning: buffered memory may exceed available system memory\n") 
         # finish dealing with these entity_labels
@@ -258,9 +258,9 @@ class NSFile:
             else:
                 entity = entity_search[packet_id]
                 entity.add_packet_data(timestamp, ipacket)
-                # [2012/09/12 ELB] item_count is now incremented in add_packet_data
-                # entity.item_count += 1
-                
+                # Note: require electrode id (packet_id) < 5120 to remove stim markers
+                if packet_id > 5120:
+                    continue
                 # For each unit class we record the entities that have this 
                 # classification. This results in the NeuralEntities and can 
                 # be found with the get_neural_info function
@@ -395,13 +395,13 @@ class NSFile:
                 hour = header.time_origin.hour
                 minute = header.time_origin.minute
                 second = header.time_origin.second
-                millisec = header.time_origin.microsecond/1000
+                millisec = header.time_origin.microsecond / 1000
                 # This calculation of the timestamp_resolution creates a difference
                 # when comparing to the BlackRock DLLs when looking at Ripple files.
                 # The Ripple files store the timestamp_resolution as 1, however,
                 # in most files (and in more recent Ripple files) this number should
                 # be the same as sample_resolution and 30000
-                timestamp_resolution = 1.0/header.sample_resolution
+                timestamp_resolution = 1.0 / header.sample_resolution
                 app_name = header.application.split("\0")[0]
                 comment = header.comment.split("\0")[0]
         return FileInfo(file_type, self.get_entity_count(), timestamp_resolution,
