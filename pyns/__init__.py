@@ -180,7 +180,23 @@ makes use of the pyns functions :meth:`pyns.nsfile.NSFile.get_entities`,
     pyplot.xlabel('[s]')
     pyplot.ylabel('[uV]')
     pyplot.show()
-    """
+
+================
+Revision History
+================
+-----------
+Version 0.5
+-----------
+* Feature: Added support for float based continuous files (.nf3)
+* Feature: Added support for stimulation markers returned as segment entities
+
+-----------
+Version 0.4
+-----------
+* First publicly released pyns version
+* Provides a complete version of Neuroshare API
+"""
+
 # The NSFile is the standard entry point for this package and 
 # it will be made easily accessible by importing it from pyns.
 from nsfile import NSFile
