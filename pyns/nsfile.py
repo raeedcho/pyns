@@ -326,8 +326,8 @@ class NSFile:
         """
         info = self.get_file_info()
         time = datetime.datetime(info.time_year, info.time_month, info.time_day,
-                                 info.time_hour, info.time_sec, info.time_hour,
-                                 info.time_millisec)
+                                 info.time_hour, info.time_min, info.time_sec,
+                                 info.time_millisec*1000)
         return time
     
     def get_entities(self, entity_type=None):
