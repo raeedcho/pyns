@@ -327,7 +327,7 @@ class NSFile:
         info = self.get_file_info()
         time = datetime.datetime(info.time_year, info.time_month, info.time_day,
                                  info.time_hour, info.time_min, info.time_sec,
-                                 info.time_millisec*1000)
+                                 info.time_millisec*1000,UTC())
         return time
     
     def get_entities(self, entity_type=None):
@@ -407,3 +407,15 @@ class NSFile:
         return FileInfo(file_type, self.get_entity_count(), timestamp_resolution,
                         time_span, app_name, year, month, day, hour, minute, second,
                         millisec, comment)
+
+class UTC(datetime.tzinfo):
+	"""UTC"""
+
+	def utcoffset(self, dt):
+		return datetime.timedelta(0) 
+
+	def tzname(self, dt):
+		return "UTC"
+
+	def dst(self, dt):
+		return datetime.timedelta(0)
