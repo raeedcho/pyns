@@ -11,7 +11,7 @@ that API.
 from collections import namedtuple
 import sys
 import numpy
-from nsexceptions import NeuroshareError, NSReturnTypes
+from .nsexceptions import NeuroshareError, NSReturnTypes
 
 #def get_bits(byte, nbytes=8):
 #    """utility fucntion that returns a list of True and False for all 
@@ -212,11 +212,17 @@ class SegmentEntity(Entity):
         Entity.__init__(self, parser, electrode_id)
         self.item_count = 0
         self.entity_type = EntityType.segment
+        self._label = "elec{0:d}".format(self.electrode_id)
         
     @property
     def label(self):
-        return "elec{0:d}".format(self.electrode_id)
-        
+        return self._label
+
+    @label.setter
+    def label(self, value):
+        'setting'
+        self._label = value
+
     def get_segment_info(self):
         """return the segment info struct for this entity"""
         source_count = 1
@@ -601,11 +607,14 @@ class AnalogEntity(Entity):
         Entity.__init__(self, parser, electrode_id)
         # NSx2.2 files contain the electrode label in them, however,
         # however, 2.1 files do not.  If 2.1 we store a string of length zero.
-        self.electrode_label = electrode_label 
+        self.electrode_label = electrode_label
         self.item_count = self.parser.n_data_points
         self.entity_type = EntityType.analog
-        # units of the data for this entity 
-        self.units = units
+        # units of the data for this entity
+        if isinstance(units, str):
+            self.units = units
+        else:
+            self.units = units.decode('utf-8')
         # channel_index is the index of this channel in the file.  This allows us
         # find where the data for this file will be found
         self.channel_index = channel_index
@@ -698,7 +707,8 @@ class AnalogEntity(Entity):
             #sample_rate = float(header.timestamp_resolution) / header.period
             min_val = header.min_analog_value
             max_val = header.max_analog_value
-            units = header.units.split('\0')[0]
+            header_units = header.units.decode('utf-8')
+            units = header_units.split('\0')[0]
 
         return AnalogInfo(self.sample_freq, min_val, max_val, units, self.scale, 
                           location_x, location_y, location_z, location_user, 

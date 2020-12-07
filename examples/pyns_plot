@@ -9,11 +9,11 @@ p - previous entity, and q - to quit the program.
 # @author: Elliott L. Barcikowski
 import argparse
 import sys
-import Tkinter
-import tkMessageBox
-import tkFileDialog # if no file is specified, open a simple dialog
+import tkinter
+from tkinter import messagebox
+from tkinter import filedialog # if no file is specified, open a simple dialog
 import numpy
-from matplotlib import pyplot #@UnresolvedImport
+from matplotlib import pyplot
 from matplotlib import rc
 from pyns.nsfile import NSFile
 from pyns.nsentity import EntityType 
@@ -61,7 +61,7 @@ class PlotManager:
         if event.key == 'b':
             self.back()
         if event.key == 'q':
-            if tkMessageBox.askokcancel('pyns_plot', 'Quit pyns_plot?'):
+            if messagebox.askokcancel('pyns_plot', 'Quit pyns_plot?'):
                 sys.exit(0)
 
     def previous(self):
@@ -107,7 +107,7 @@ class PlotManager:
         
         timestamps = numpy.zeros(item_count, dtype=numpy.double)
         values = numpy.zeros(item_count, dtype=numpy.uint16)
-        for item in xrange(0, item_count):
+        for item in range(item_count):
             data_rt = entity.get_event_data(item)
             timestamps[item] = data_rt[0]
             values[item] = 0
@@ -224,6 +224,7 @@ class PlotManager:
 
         return True
 
+
 if __name__ == '__main__':
     description = """pyns_plot is a simple command line plotting tool 
 (making use of matplotlib) to index through plots of Neuroshare entities.  
@@ -253,7 +254,7 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
     if args.segment_only and args.analog_only:
         parser.error("can't specify both analog-only and segment-only options")
 
-    root = Tkinter.Tk()
+    root = tkinter.Tk()
     root.withdraw()    
 
     message = """pyns_plot shows the power and ease of using Python for quick analysis applications.
@@ -264,7 +265,7 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
         'b' - back in time,
         'q' - quit pyns_plot.
         """
-    tkMessageBox.showinfo('pyns_plot Help', message)    
+    messagebox.showinfo('pyns_plot Help', message)
     
     # check that we have an input file and that it opens successfully  
     if not args.filename:
@@ -272,7 +273,7 @@ the keys: n - next entity, p - previous entity, and q - to quit the program.
         # and have the user specify a file
 
         nev_formats = [ ("NEV", "*.nev"), ("NSx", "*.ns?"), ("NFx", "*.nf3") ]
-        filename = tkFileDialog.askopenfilename(title="Choose a file", filetypes=nev_formats)
+        filename = filedialog.askopenfilename(title="Choose a file", filetypes=nev_formats)
         #
         if len(filename) == 0:
             parser.error('selected invalid NEV or NSx file.')

@@ -21,8 +21,8 @@ for index in range(0, entity.item_count):
         continue
     diff[index-1] = last_ts - curr_ts
     if curr_ts < last_ts:
-        print '{0}: {1}'.format(index-1, last_ts)
-        print '{0}: {1}'.format(index, curr_ts)
+        print('{0}: {1}'.format(index-1, last_ts))
+        print('{0}: {1}'.format(index, curr_ts))
 
 pyplot.hist(diff, 1000)
 raw_input()

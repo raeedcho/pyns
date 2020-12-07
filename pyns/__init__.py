@@ -199,4 +199,4 @@ Version 0.4
 
 # The NSFile is the standard entry point for this package and 
 # it will be made easily accessible by importing it from pyns.
-from nsfile import NSFile
+from pyns.nsfile import NSFile
