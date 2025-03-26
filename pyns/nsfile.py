@@ -222,7 +222,7 @@ class NSFile:
         # causing issues with the user
         # BUG: This doesn't work...
         if USE_MEM_CHECK:
-            phymem = psutil.avail_phymem()  # physical memory in bytes
+            phymem = psutil.virtual_memory().total  # physical memory in bytes
             neededmem = parser.n_data_packets * 8
             if neededmem > phymem:
                 sys.stderr.write("warning: buffered memory may exceed available system memory\n")
