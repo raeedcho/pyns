@@ -14,11 +14,8 @@ from tkinter import messagebox
 from tkinter import filedialog # if no file is specified, open a simple dialog
 import numpy
 from matplotlib import pyplot
-from matplotlib import rc
 from pyns.nsfile import NSFile
-from pyns.nsentity import EntityType 
-import time
-import textwrap
+from pyns.nsentity import EntityType
 
 class PlotManager:
     """class to draw entities and handle events from user.  The pyplot

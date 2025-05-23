@@ -1,12 +1,13 @@
 import pyns
+from pyns.nsentity import EntityType
 from matplotlib import pyplot
 import numpy
 
-input_file = "C:\Users\elliottb\Downloads\WileEDriftChoice0007.nev"
+input_file = "datafile0001.nev" # default location for sample data is ../Users/../Trellis/sampleData
 
 nsfile = pyns.NSFile(input_file)
 
-event_entities = [e for e in nsfile.get_entities(1)]
+event_entities = [e for e in nsfile.get_entities(EntityType.event)]
 entity = event_entities[0]
 
 last_ts = 0
@@ -25,5 +26,4 @@ for index in range(0, entity.item_count):
         print('{0}: {1}'.format(index, curr_ts))
 
 pyplot.hist(diff, 1000)
-raw_input()
-
+pyplot.show()
