@@ -11,7 +11,7 @@ classifiers = [
 ]
 
 setup(name="pyns",
-      version="0.4.2",
+      version="0.5.1",
       description="Python port of the Neuroshare API",
       author="Ripple LLC",
       author_email="support@rppl.com",
