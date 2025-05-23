@@ -7,14 +7,12 @@ versions of the Neuroshare API functions of the type ns_GetFileInfo,
 ns_GetEntityInfo, etc. 
 """
 import argparse
-import textwrap
 from pyns.nsfile import NSFile
 from pyns.nsentity import EntityType
 
 import sys
 import tkinter
 from tkinter import filedialog
-from tkinter import *
 
 def dump_namedtuple(ntuple, use_full=False):
     """Utility function to dump namedtuples to stdout in an 

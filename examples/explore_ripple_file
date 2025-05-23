@@ -7,7 +7,7 @@ labels found in some Ripple files.
 from pyns.nsfile import NSFile
 from pyns.nsentity import EntityType
 
-BAD_FILE = "C:\\Users\\alireza\\Trellis\\dataFiles\\20190419\\datafile.nev"
+BAD_FILE = "datafile0001.nev" # default location for sample data is ../Users/../Trellis/sampleData
 
 if __name__ == '__main__':
     f = NSFile(BAD_FILE)
