@@ -7,28 +7,27 @@ versions of the Neuroshare API functions of the type ns_GetFileInfo,
 ns_GetEntityInfo, etc. 
 """
 import argparse
-import textwrap
 from pyns.nsfile import NSFile
 from pyns.nsentity import EntityType
 
 import sys
-import Tkinter
-import tkFileDialog # if no file is specified, open a simple dialog
+import tkinter
+from tkinter import filedialog
 
 def dump_namedtuple(ntuple, use_full=False):
     """Utility function to dump namedtuples to stdout in an 
     easily readable form.
     """
-    for key, value in ntuple._asdict().iteritems():
+    for key, value in ntuple._asdict().items():
         if key == "header_type":
             continue
         if type(value) == str:
             if use_full:
-                print "{0:<25} {1}".format(key, repr(value))
+                print("{0:<25} {1}".format(key, repr(value)))
             else:            
-                print "{0:<25} {1:s}".format(key, value.split('\0')[0])
+                print("{0:<25} {1:s}".format(key, value.split('\0')[0]))
         else:
-            print "{0:<25} {1}".format(key, value)
+            print("{0:<25} {1}".format(key, value))
 
 
 if __name__ == '__main__':
@@ -51,10 +50,10 @@ to both provide a useful and to demonstrate the use of the pyns package.
     if not args.filename:
         # if no file is specified, we'll open a simple tk file dialog and
         # and have the user specify a file
-        root = Tkinter.Tk()
+        root = tkinter.Tk()
         root.withdraw()
         nev_formats = [ ("NEV", "*.nev"), ("NSx", "*.ns?") ]
-        filename = tkFileDialog.askopenfilename(title="Choose a file",
+        filename = filedialog.askopenfilename(title="Choose a file",
                                                 filetypes=nev_formats)
         if len(filename) == 0:
             parser.error("selected invalid NEV or NSx file.")
@@ -73,9 +72,9 @@ to both provide a useful and to demonstrate the use of the pyns package.
             want_entity = EntityType.get_entity_id(args.entity)            
     # NSFile.get_file_info() is the equivalent of the Neuroshare 
     # API function ns_GetFileInfo  
-    print "====================================="
-    print " File Info"
-    print "====================================="
+    print("=====================================")
+    print(" File Info")
+    print("=====================================")
     dump_namedtuple(nsfile.get_file_info())
 
     skipped = 0
@@ -97,34 +96,34 @@ to both provide a useful and to demonstrate the use of the pyns package.
         if entity.entity_type == EntityType.segment:
             # pyns.SegmentEntity.get_segment_info is the equivalent of 
             # the Neuroshare function ns_GetSegmentInfo
-            print "====================================="
-            print "Entity Index: {0} Type: Segment".format(index)
-            print "====================================="
+            print("=====================================")
+            print("Entity Index: {0} Type: Segment".format(index))
+            print("=====================================")
             dump_namedtuple(entity_info)
             dump_namedtuple(entity.get_segment_info())
         elif entity.entity_type == EntityType.analog:
             # pyns.AnalogEntity.get_analog_info is the equivalent of 
             # the Neuroshare function ns_GetAnalogInfo            
-            print "====================================="
-            print "Entity Index: {0} Type: Analog".format(index)
-            print "====================================="
+            print("=====================================")
+            print("Entity Index: {0} Type: Analog".format(index))
+            print("=====================================")
             dump_namedtuple(entity_info)
             dump_namedtuple(entity.get_analog_info())
         elif entity.entity_type == EntityType.neural:
             # pyns.Neural.get_neural_info is the equivalent of 
             # the Neuroshare function ns_GetNeuralInfo            
-            print "====================================="
-            print "Entity Index: {0} Type: Neural".format(index)
-            print "====================================="
+            print("=====================================")
+            print("Entity Index: {0} Type: Neural".format(index))
+            print("=====================================")
             dump_namedtuple(entity_info)
             dump_namedtuple(entity.get_neural_info())
 
         elif entity.entity_type == EntityType.event:
             # pyns.Neural.get_neural_info is the equivalent of 
             # the Neuroshare function ns_GetNeuralInfo
-            print "====================================="
-            print "Entity Index: {0} Type: Event".format(index)
-            print "====================================="
+            print("=====================================")
+            print("Entity Index: {0} Type: Event".format(index))
+            print("=====================================")
             dump_namedtuple(entity_info)
             dump_namedtuple(entity.get_event_info())
         else:
