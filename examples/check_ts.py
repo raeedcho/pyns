@@ -3,7 +3,8 @@ from pyns.nsentity import EntityType
 from matplotlib import pyplot
 import numpy
 
-input_file = "datafile0001.nev" # default location for sample data is ../Users/../Trellis/sampleData
+input_file = "data/sample_data_set.nev"
+# input_file = "datafile0001.nev" # default location for sample data is ../Users/../Trellis/sampleData
 
 nsfile = pyns.NSFile(input_file)
 
